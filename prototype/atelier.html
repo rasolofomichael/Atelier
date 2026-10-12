@@ -1,0 +1,261 @@
+<title>Atelier d'écriture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: rail des scènes à gauche, page d'écriture au centre, bible à droite ; sur mobile, trois onglets. */
+:root{
+  --bg:#eef0ec; --paper:#fbfcf9; --ink:#1d2433; --muted:#5f6878; --line:#d6dad2;
+  --accent:#2f4fd8; --accent-soft:#e3e8fb; --idea:#b07a12; --draft:#2f4fd8; --done:#2e7d5b;
+  --display:"Bricolage Grotesque",system-ui,sans-serif;
+  --body:"Literata",Georgia,serif;
+  --mono:"JetBrains Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12151c; --paper:#1a1e27; --ink:#e6e8ee; --muted:#9aa1b0; --line:#2b313d;
+  --accent:#8ea2ff; --accent-soft:#252d4a; --idea:#e0b24d; --draft:#8ea2ff; --done:#6cc79c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12151c; --paper:#1a1e27; --ink:#e6e8ee; --muted:#9aa1b0; --line:#2b313d;
+  --accent:#8ea2ff; --accent-soft:#252d4a; --idea:#e0b24d; --draft:#8ea2ff; --done:#6cc79c; color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--display)}
+*{box-sizing:border-box}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{display:grid;grid-template-columns:260px minmax(0,1fr) 300px;grid-template-rows:auto minmax(0,1fr);height:100%}
+header{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{font-weight:700;font-size:1.15rem;letter-spacing:-.01em}
+.brand span{color:var(--accent)}
+#projectSel{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:6px 8px;max-width:220px}
+.spacer{flex:1}
+.btn{background:transparent;border:1px solid var(--line);border-radius:6px;padding:6px 10px;font-size:.85rem}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--paper)}
+.btn.primary:hover{color:var(--paper);filter:brightness(1.08)}
+aside,main{min-height:0;overflow:auto}
+aside{padding:16px}
+.rail{border-right:1px solid var(--line)}
+.bible{border-left:1px solid var(--line)}
+h2{font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:0 0 10px;font-weight:500;display:flex;justify-content:space-between;align-items:center}
+.scene{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px;border-radius:6px;border:1px solid transparent;width:100%;text-align:left;background:none}
+.scene:hover{background:var(--paper)}
+.scene.on{background:var(--paper);border-color:var(--line)}
+.dot{width:8px;height:8px;border-radius:50%}
+.st-idee{background:var(--idea)} .st-brouillon{background:var(--draft)} .st-revise{background:var(--done)}
+.scene .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.92rem}
+.scene .n{font-family:var(--mono);font-size:.7rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.list{display:flex;flex-direction:column;gap:2px}
+.total{margin-top:16px;padding-top:12px;border-top:1px solid var(--line);font-family:var(--mono);font-size:.75rem;color:var(--muted);display:grid;gap:4px}
+.legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;font-size:.72rem;color:var(--muted)}
+.legend span{display:flex;align-items:center;gap:5px}
+main{display:flex;justify-content:center;padding:24px 16px}
+.page{width:100%;max-width:44rem;display:flex;flex-direction:column;gap:12px}
+.meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#sceneTitle{flex:1;min-width:0;font-family:var(--display);font-size:1.9rem;font-weight:700;letter-spacing:-.02em;border:none;background:transparent;padding:0;text-wrap:balance}
+#sceneTitle:focus{outline:none}
+#sceneStatus{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:4px 6px;font-size:.8rem}
+.tools{display:flex;gap:6px;flex-wrap:wrap}
+.tools .btn{font-size:.75rem;padding:4px 8px}
+#sceneText{flex:1;min-height:55vh;font-family:var(--body);font-size:1.12rem;line-height:1.75;border:none;background:var(--paper);border-radius:4px;padding:28px clamp(16px,5vw,48px);resize:none;box-shadow:0 1px 0 var(--line)}
+#sceneText:focus{outline:none;box-shadow:0 0 0 1px var(--line)}
+.status{font-family:var(--mono);font-size:.72rem;color:var(--muted);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:.75rem;padding:3px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent);border:none}
+.filters{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap}
+.filters button{font-size:.75rem;padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:none}
+.filters button.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.entry{border-bottom:1px solid var(--line);padding:10px 0}
+.entry summary{cursor:pointer;display:flex;justify-content:space-between;gap:8px;list-style:none}
+.entry summary::-webkit-details-marker{display:none}
+.entry .nm{font-weight:600}
+.entry .ty{font-family:var(--mono);font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.entry.hit .nm{color:var(--accent)}
+.entry input,.entry textarea{width:100%;background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:6px 8px;margin-top:8px;font-family:var(--body);font-size:.9rem}
+.entry textarea{min-height:90px;resize:vertical;line-height:1.5}
+.entry .row{display:flex;gap:6px;margin-top:6px;justify-content:space-between;align-items:center}
+.entry select{background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:4px;font-size:.8rem}
+.del{color:var(--muted);background:none;border:none;font-size:.75rem;text-decoration:underline}
+.del.arm{color:#c0392b}
+.hint{font-size:.78rem;color:var(--muted);line-height:1.5;margin:6px 0 0}
+.tabs{display:none}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:8px 14px;border-radius:6px;font-size:.85rem}
+body.focus .rail,body.focus .bible,body.focus header .hide-focus{display:none}
+body.focus .app{grid-template-columns:1fr}
+@media (max-width:900px){
+  .app{grid-template-columns:1fr;grid-template-rows:auto auto minmax(0,1fr)}
+  .tabs{display:flex;grid-column:1/-1;border-bottom:1px solid var(--line)}
+  .tabs button{flex:1;padding:10px;background:none;border:none;border-bottom:2px solid transparent;font-size:.85rem;color:var(--muted)}
+  .tabs button.on{color:var(--ink);border-color:var(--accent)}
+  .rail,.bible{border:none}
+  .app[data-tab="ecrire"] .rail,.app[data-tab="ecrire"] .bible,
+  .app[data-tab="scenes"] main,.app[data-tab="scenes"] .bible,
+  .app[data-tab="bible"] main,.app[data-tab="bible"] .rail{display:none}
+  #sceneTitle{font-size:1.5rem}
+  #sceneText{min-height:60vh;font-size:1.05rem}
+  main{padding:16px}
+  body.focus .tabs{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="app" id="app" data-tab="ecrire">
+  <header>
+    <div class="brand">Atelier<span>.</span></div>
+    <select id="projectSel" aria-label="Projet" class="hide-focus"></select>
+    <button class="btn hide-focus" id="renameBtn">Renommer</button>
+    <button class="btn hide-focus" id="newProject">+ Projet</button>
+    <div class="spacer"></div>
+    <button class="btn hide-focus" id="exportBtn">Copier le texte</button>
+    <button class="btn" id="focusBtn">Mode focus</button>
+  </header>
+  <nav class="tabs" aria-label="Sections">
+    <button data-t="scenes">Scènes</button>
+    <button data-t="ecrire" class="on">Écrire</button>
+    <button data-t="bible">Bible</button>
+  </nav>
+
+  <aside class="rail">
+    <h2>Scènes <button class="btn" id="addScene">+ Scène</button></h2>
+    <div class="list" id="sceneList"></div>
+    <div class="legend">
+      <span><i class="dot st-idee"></i>Idée</span>
+      <span><i class="dot st-brouillon"></i>Brouillon</span>
+      <span><i class="dot st-revise"></i>Révisé</span>
+    </div>
+    <div class="total" id="totals"></div>
+  </aside>
+
+  <main>
+    <div class="page">
+      <div class="meta">
+        <input id="sceneTitle" aria-label="Titre de la scène" placeholder="Titre de la scène">
+        <select id="sceneStatus" aria-label="Statut">
+          <option value="idee">Idée</option>
+          <option value="brouillon">Brouillon</option>
+          <option value="revise">Révisé</option>
+        </select>
+      </div>
+      <div class="tools">
+        <button class="btn" id="upBtn">↑ Monter</button>
+        <button class="btn" id="downBtn">↓ Descendre</button>
+        <button class="btn" id="delScene">Supprimer la scène</button>
+      </div>
+      <textarea id="sceneText" aria-label="Texte de la scène" placeholder="Écris ici…"></textarea>
+      <div class="status"><span id="wc">0 mot</span><span id="saved">Enregistré</span></div>
+      <div>
+        <h2>Présents dans cette scène</h2>
+        <div class="chips" id="mentions"></div>
+      </div>
+    </div>
+  </main>
+
+  <aside class="bible">
+    <h2>Bible de l'univers <button class="btn" id="addEntry">+ Fiche</button></h2>
+    <div class="filters" id="filters">
+      <button data-f="all" class="on">Tout</button>
+      <button data-f="Personnage">Personnages</button>
+      <button data-f="Lieu">Lieux</button>
+      <button data-f="Lore">Lore</button>
+    </div>
+    <div id="entries"></div>
+    <p class="hint">Les noms de fiches repérés dans la scène s'allument en bleu. Les alias se séparent par des virgules.</p>
+  </aside>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const KEY="atelier-ecriture-v1";
+const uid=()=>Math.random().toString(36).slice(2,9);
+function sample(){
+  return {current:"p1",projects:[{id:"p1",name:"Exemple · La ville sous la pluie",sceneId:"s1",
+    scenes:[
+      {id:"s1",title:"Ouverture : le quai",status:"brouillon",text:"Il pleuvait sur Port-Ombre depuis trois cents jours. Lia attendait au bout du quai, la lanterne éteinte à la main.\n\nQuand le bateau sans voile apparut, elle sut que le Pacte venait d'être rompu."},
+      {id:"s2",title:"La maison du passeur",status:"idee",text:"Lia frappe chez Oren. Il refuse d'ouvrir."},
+      {id:"s3",title:"Le marché noyé",status:"idee",text:""}],
+    bible:[
+      {id:"b1",type:"Personnage",name:"Lia",alias:"la gardienne",notes:"Gardienne de phare, 19 ans. Ne dort jamais plus de trois heures."},
+      {id:"b2",type:"Personnage",name:"Oren",alias:"le passeur",notes:"Ancien marin. Sait ce que le Pacte a coûté."},
+      {id:"b3",type:"Lieu",name:"Port-Ombre",alias:"",notes:"Ville portuaire où il pleut sans interruption."},
+      {id:"b4",type:"Lore",name:"Pacte",alias:"le Pacte",notes:"Accord ancien entre la ville et la mer. Règle 1 : aucun bateau sans voile n'entre au port."}]}]};
+}
+let S;
+try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+if(!S||!S.projects||!S.projects.length)S=sample();
+let filter="all",saveT;
+const $=id=>document.getElementById(id);
+const P=()=>S.projects.find(p=>p.id===S.current)||S.projects[0];
+const Sc=()=>{const p=P();return p.scenes.find(s=>s.id===p.sceneId)||p.scenes[0]};
+const words=t=>(t.trim().match(/\S+/g)||[]).length;
+const fmt=n=>n.toLocaleString("fr-FR")+(n>1?" mots":" mot");
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));$("saved").textContent="Enregistré"}catch(e){$("saved").textContent="Non enregistré (stockage indisponible)"}}
+function queue(){$("saved").textContent="…";clearTimeout(saveT);saveT=setTimeout(save,400)}
+function toast(m){const t=$("toast");t.textContent=m;t.hidden=false;clearTimeout(t._t);t._t=setTimeout(()=>t.hidden=true,1800)}
+const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function renderProjects(){$("projectSel").innerHTML=S.projects.map(p=>`<option value="${p.id}"${p.id===S.current?" selected":""}>${esc(p.name)}</option>`).join("")}
+function renderScenes(){
+  const p=P(),cur=Sc();
+  $("sceneList").innerHTML=p.scenes.map(s=>`<button class="scene${s===cur?" on":""}" data-id="${s.id}"><i class="dot st-${s.status}"></i><span class="t">${esc(s.title||"Sans titre")}</span><span class="n">${words(s.text)}</span></button>`).join("");
+  const tot=p.scenes.reduce((a,s)=>a+words(s.text),0);
+  const c=k=>p.scenes.filter(s=>s.status===k).length;
+  $("totals").innerHTML=`<span>${fmt(tot)} au total</span><span>${p.scenes.length} scènes · ${c("revise")} révisées</span><span>≈ ${Math.max(1,Math.round(tot/250))} page${tot>375?"s":""} de roman</span>`;
+}
+function renderEditor(){
+  const s=Sc();if(!s)return;
+  if(document.activeElement!==$("sceneTitle"))$("sceneTitle").value=s.title;
+  if(document.activeElement!==$("sceneText"))$("sceneText").value=s.text;
+  $("sceneStatus").value=s.status;
+  $("wc").textContent=fmt(words(s.text));
+}
+function names(e){return [e.name,...(e.alias||"").split(",")].map(x=>x.trim()).filter(Boolean)}
+function hits(){
+  const t=(Sc()?.text||"")+" "+(Sc()?.title||"");
+  return P().bible.filter(e=>names(e).some(n=>new RegExp("(^|[^\\p{L}])"+n.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"($|[^\\p{L}])","iu").test(t)));
+}
+function renderMentions(){
+  const h=hits();
+  $("mentions").innerHTML=h.length?h.map(e=>`<button class="chip" data-id="${e.id}">${esc(e.name)}</button>`).join(""):`<span class="hint">Aucune fiche de la bible n'apparaît encore dans cette scène.</span>`;
+  document.querySelectorAll(".entry").forEach(d=>d.classList.toggle("hit",h.some(e=>e.id===d.dataset.id)));
+}
+function renderBible(open){
+  const list=P().bible.filter(e=>filter==="all"||e.type===filter);
+  $("entries").innerHTML=list.map(e=>`<details class="entry" data-id="${e.id}"${e.id===open?" open":""}>
+    <summary><span class="nm">${esc(e.name||"Sans nom")}</span><span class="ty">${e.type}</span></summary>
+    <input id="n-${e.id}" data-k="name" value="${esc(e.name)}" placeholder="Nom" aria-label="Nom">
+    <input id="a-${e.id}" data-k="alias" value="${esc(e.alias||"")}" placeholder="Alias, surnoms" aria-label="Alias">
+    <textarea id="t-${e.id}" data-k="notes" placeholder="Notes, apparence, histoire, règles…" aria-label="Notes">${esc(e.notes||"")}</textarea>
+    <div class="row"><select id="y-${e.id}" data-k="type" aria-label="Type">${["Personnage","Lieu","Lore"].map(t=>`<option${t===e.type?" selected":""}>${t}</option>`).join("")}</select><button class="del" data-del="${e.id}">Supprimer</button></div>
+  </details>`).join("")||`<p class="hint">Aucune fiche dans cette catégorie.</p>`;
+  renderMentions();
+}
+function all(){renderProjects();renderScenes();renderEditor();renderBible()}
+
+$("sceneList").onclick=e=>{const b=e.target.closest(".scene");if(!b)return;P().sceneId=b.dataset.id;save();renderScenes();$("sceneTitle").blur();$("sceneText").blur();renderEditor();renderMentions();setTab("ecrire")};
+$("sceneTitle").oninput=e=>{Sc().title=e.target.value;queue();renderScenes();renderMentions()};
+$("sceneText").oninput=e=>{Sc().text=e.target.value;queue();$("wc").textContent=fmt(words(e.target.value));renderScenes();renderMentions()};
+$("sceneStatus").onchange=e=>{Sc().status=e.target.value;save();renderScenes()};
+$("addScene").onclick=()=>{const p=P(),s={id:uid(),title:"Nouvelle scène",status:"idee",text:""};const i=p.scenes.indexOf(Sc());p.scenes.splice(i+1,0,s);p.sceneId=s.id;save();renderScenes();renderEditor();renderMentions();setTab("ecrire");$("sceneTitle").select()};
+function move(d){const p=P(),i=p.scenes.indexOf(Sc()),j=i+d;if(j<0||j>=p.scenes.length)return;[p.scenes[i],p.scenes[j]]=[p.scenes[j],p.scenes[i]];save();renderScenes()}
+$("upBtn").onclick=()=>move(-1);$("downBtn").onclick=()=>move(1);
+let armed=null;
+function arm(btn,key,fn,label){if(armed===key){fn();armed=null;return}armed=key;btn.textContent="Confirmer ?";btn.classList.add("arm");setTimeout(()=>{if(armed===key){armed=null;btn.textContent=label;btn.classList.remove("arm")}},2500)}
+$("delScene").onclick=e=>arm(e.target,"scene",()=>{const p=P();if(p.scenes.length<2){toast("Garde au moins une scène");e.target.textContent="Supprimer la scène";return}const i=p.scenes.indexOf(Sc());p.scenes.splice(i,1);p.sceneId=p.scenes[Math.max(0,i-1)].id;save();e.target.textContent="Supprimer la scène";all()},"Supprimer la scène");
+$("projectSel").onchange=e=>{S.current=e.target.value;save();all()};
+$("newProject").onclick=()=>{const s={id:uid(),title:"Première scène",status:"idee",text:""};const p={id:uid(),name:"Nouveau projet",sceneId:s.id,scenes:[s],bible:[]};S.projects.push(p);S.current=p.id;save();all();
+  renameProject()};
+const selEl=$("projectSel");
+function renameProject(){const p=P();const n=document.createElement("input");n.value=p.name;n.id="pname";n.className="btn";n.style.maxWidth="220px";n.setAttribute("aria-label","Nom du projet");selEl.replaceWith(n);n.select();
+  n.onblur=()=>{p.name=n.value.trim()||"Nouveau projet";n.replaceWith(selEl);save();renderProjects()};n.onkeydown=k=>{if(k.key==="Enter")n.blur()}}
+$("renameBtn").onclick=renameProject;
+$("addEntry").onclick=()=>{const e={id:uid(),type:filter==="all"?"Personnage":filter,name:"",alias:"",notes:""};P().bible.unshift(e);save();renderBible(e.id);$("n-"+e.id).focus();setTab("bible")};
+$("entries").oninput=e=>{const d=e.target.closest(".entry"),k=e.target.dataset.k;if(!d||!k)return;const en=P().bible.find(x=>x.id===d.dataset.id);en[k]=e.target.value;queue();if(k==="name")d.querySelector(".nm").textContent=en.name||"Sans nom";if(k==="type")d.querySelector(".ty").textContent=en.type;renderMentions()};
+$("entries").onclick=e=>{const id=e.target.dataset.del;if(!id)return;arm(e.target,"e"+id,()=>{const b=P().bible;b.splice(b.findIndex(x=>x.id===id),1);save();renderBible()},"Supprimer")};
+$("filters").onclick=e=>{const f=e.target.dataset.f;if(!f)return;filter=f;document.querySelectorAll("#filters button").forEach(b=>b.classList.toggle("on",b.dataset.f===f));renderBible()};
+$("mentions").onclick=e=>{const id=e.target.dataset.id;if(!id)return;filter="all";document.querySelectorAll("#filters button").forEach(b=>b.classList.toggle("on",b.dataset.f==="all"));renderBible(id);setTab("bible");document.querySelector(`.entry[data-id="${id}"]`)?.scrollIntoView({block:"nearest"})};
+$("focusBtn").onclick=()=>{const on=document.body.classList.toggle("focus");$("focusBtn").textContent=on?"Quitter le focus":"Mode focus";if(on)setTab("ecrire")};
+$("exportBtn").onclick=()=>{const p=P();const txt="# "+p.name+"\n\n"+p.scenes.map(s=>"## "+(s.title||"Sans titre")+"\n\n"+s.text).join("\n\n");
+  navigator.clipboard.writeText(txt).then(()=>toast("Texte du projet copié")).catch(()=>{const t=$("sceneText");toast("Copie refusée par le navigateur")})};
+function setTab(t){$("app").dataset.tab=t;document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.t===t))}
+document.querySelector(".tabs").onclick=e=>{const t=e.target.dataset.t;if(t)setTab(t)};
+all();
+</script>

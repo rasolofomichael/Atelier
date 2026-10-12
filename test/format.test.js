@@ -7,17 +7,17 @@ import {
 
 const projet = {
   id: 'p1',
-  titre: 'Les Marées de Vhal',
+  name: 'Les Marées de Vhal',
   description: 'Roman de SF.\n\nTome 1.',
   scenes: [
-    { id: 's1', titre: 'Ouverture : la tempête', statut: 'brouillon', texte: 'Il pleuvait.\n\n— « Encore ? » dit-elle.\n' },
-    { id: 's2', titre: 'Ouverture : la tempête', statut: 'idee', texte: '' },
-    { id: 's3', titre: 'true', statut: 'revise', texte: '---\nPas un front matter.\n  ' },
+    { id: 's1', title: 'Ouverture : la tempête', status: 'brouillon', text: 'Il pleuvait.\n\n— « Encore ? » dit-elle.\n' },
+    { id: 's2', title: 'Ouverture : la tempête', status: 'idee', text: '' },
+    { id: 's3', title: 'true', status: 'revise', text: '---\nPas un front matter.\n  ' },
   ],
-  fiches: [
-    { id: 'f1', type: 'personnage', nom: 'Léna Ardent', alias: ['Léna', 'la Capitaine', 'L: "A"'], notes: 'Pilote.' },
-    { id: 'f2', type: 'lieu', nom: 'Vhal', alias: [], notes: '' },
-    { id: 'f3', type: 'lore', nom: '2077', alias: ['#1'], notes: 'Date clé.' },
+  bible: [
+    { id: 'f1', type: 'Personnage', name: 'Léna Ardent', alias: 'Léna, la Capitaine, L: "A"', notes: 'Pilote.' },
+    { id: 'f2', type: 'Lieu', name: 'Vhal', alias: '', notes: '' },
+    { id: 'f3', type: 'Lore', name: '2077', alias: '#1', notes: 'Date clé.' },
   ],
 };
 
@@ -43,11 +43,12 @@ test('aller-retour complet du projet', () => {
     'scenes/true.md',
   ]);
   const back = filesToProject(files);
-  assert.equal(back.titre, projet.titre);
+  assert.equal(back.name, projet.name);
   assert.equal(back.description, projet.description);
-  assert.deepEqual(back.scenes.map(({ fichier, ...s }) => s), projet.scenes);
+  assert.deepEqual(back.scenes.map(({ file, ...s }) => s), projet.scenes);
+  assert.equal(back.sceneId, 's1');
   const sortById = a => [...a].sort((x, y) => x.id.localeCompare(y.id));
-  assert.deepEqual(sortById(back.fiches).map(({ fichier, ...f }) => f), projet.fiches);
+  assert.deepEqual(sortById(back.bible).map(({ file, ...f }) => f), projet.bible);
   // Second passage : fichiers identiques (noms stables).
   assert.deepEqual(projectToFiles(back), files);
 });
@@ -62,7 +63,7 @@ test('lisible à la main', () => {
 
 test('le nom de fichier ne change pas quand le titre change', () => {
   const back = filesToProject(projectToFiles(projet));
-  back.scenes[0].titre = 'Nouveau titre';
+  back.scenes[0].title = 'Nouveau titre';
   assert.ok(projectToFiles(back).has('scenes/ouverture-la-tempete.md'));
 });
 
@@ -75,12 +76,12 @@ test('fichiers édités à la main : tolérance', () => {
     'bible/inconnu/x.md': 'ignoré',
     'notes.txt': 'ignoré',
   });
-  assert.deepEqual(p.scenes.map(s => [s.fichier, s.titre, s.statut, s.texte]), [
+  assert.deepEqual(p.scenes.map(s => [s.file, s.title, s.status, s.text]), [
     ['b', "L'arrivée", 'revise', 'Texte.\n'],
     ['a', 'a', 'idee', 'Juste du texte, sans en-tête.'],
   ]);
   assert.ok(p.scenes.every(s => s.id));
-  assert.deepEqual(p.fiches.map(f => [f.type, f.nom, f.alias]), [['personnage', 'Max', ['Maxou']]]);
+  assert.deepEqual(p.bible.map(f => [f.type, f.name, f.alias]), [['Personnage', 'Max', 'Maxou']]);
 });
 
 test('parseDoc sans front matter', () => {
@@ -89,6 +90,6 @@ test('parseDoc sans front matter', () => {
 });
 
 test('valeurs par défaut', () => {
-  assert.equal(markdownToScene('---\nstatut: inconnu\n---\n').statut, 'idee');
-  assert.deepEqual(markdownToFiche('', 'lieu', 'Port').alias, []);
+  assert.equal(markdownToScene('---\nstatut: inconnu\n---\n').status, 'idee');
+  assert.equal(markdownToFiche('', 'Lieu', 'Port').alias, '');
 });

@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#eef0ec" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#12151c" media="(prefers-color-scheme: dark)">
+<title>Atelier d'écriture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="styles.css">
+<script type="module" src="src/app.js"></script>
+</head>
+<body>
+<div class="app" id="app" data-tab="ecrire">
+  <header>
+    <div class="brand">Atelier<span>.</span></div>
+    <select id="projectSel" aria-label="Projet" class="hide-focus"></select>
+    <button class="btn hide-focus" id="renameBtn">Renommer</button>
+    <button class="btn hide-focus" id="newProject">+ Projet</button>
+    <div class="spacer"></div>
+    <button class="btn hide-focus" id="exportBtn">Copier le texte</button>
+    <button class="btn hide-focus" id="backupBtn">Sauvegardes</button>
+    <button class="btn" id="focusBtn">Mode focus</button>
+  </header>
+  <nav class="tabs" aria-label="Sections">
+    <button data-t="scenes">Scènes</button>
+    <button data-t="ecrire" class="on">Écrire</button>
+    <button data-t="bible">Bible</button>
+  </nav>
+
+  <aside class="rail">
+    <h2>Scènes <button class="btn" id="addScene">+ Scène</button></h2>
+    <div class="list" id="sceneList"></div>
+    <div class="legend">
+      <span><i class="dot st-idee"></i>Idée</span>
+      <span><i class="dot st-brouillon"></i>Brouillon</span>
+      <span><i class="dot st-revise"></i>Révisé</span>
+    </div>
+    <div class="total" id="totals"></div>
+  </aside>
+
+  <main>
+    <div class="page">
+      <div class="meta">
+        <input id="sceneTitle" aria-label="Titre de la scène" placeholder="Titre de la scène">
+        <select id="sceneStatus" aria-label="Statut">
+          <option value="idee">Idée</option>
+          <option value="brouillon">Brouillon</option>
+          <option value="revise">Révisé</option>
+        </select>
+      </div>
+      <div class="tools">
+        <button class="btn" id="upBtn">↑ Monter</button>
+        <button class="btn" id="downBtn">↓ Descendre</button>
+        <button class="btn" id="delScene">Supprimer la scène</button>
+      </div>
+      <textarea id="sceneText" aria-label="Texte de la scène" placeholder="Écris ici…"></textarea>
+      <div class="status"><span id="wc">0 mot</span><span id="saved">Enregistré</span></div>
+      <div>
+        <h2>Présents dans cette scène</h2>
+        <div class="chips" id="mentions"></div>
+      </div>
+    </div>
+  </main>
+
+  <aside class="bible">
+    <h2>Bible de l'univers <button class="btn" id="addEntry">+ Fiche</button></h2>
+    <div class="filters" id="filters">
+      <button data-f="all" class="on">Tout</button>
+      <button data-f="Personnage">Personnages</button>
+      <button data-f="Lieu">Lieux</button>
+      <button data-f="Lore">Lore</button>
+    </div>
+    <div id="entries"></div>
+    <p class="hint">Les noms de fiches repérés dans la scène s'allument en bleu. Les alias se séparent par des virgules.</p>
+  </aside>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<dialog id="backupDlg" aria-labelledby="backupTitle">
+  <h2 id="backupTitle">Sauvegardes <button class="btn" id="closeDlg">Fermer</button></h2>
+  <p class="hint" id="storeInfo"></p>
+  <div class="tools">
+    <button class="btn" id="dlJson">Télécharger une copie</button>
+    <label class="btn">Importer une copie<input type="file" id="importJson" accept=".json,application/json" hidden></label>
+  </div>
+  <h2>Copies automatiques</h2>
+  <p class="hint">Une copie toutes les 10 minutes d'écriture, plus avant chaque restauration ou import. Les 30 plus récentes sont gardées.</p>
+  <div id="backupList"></div>
+</dialog>
+<noscript>Atelier a besoin de JavaScript.</noscript>
+</body>
+</html>

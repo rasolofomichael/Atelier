@@ -4,9 +4,6 @@
 
 export const STATUTS = ['idee', 'brouillon', 'revise'];
 
-export const BIBLE_DIRS = { personnage: 'personnages', lieu: 'lieux', lore: 'lore' };
-const DIR_TO_TYPE = Object.fromEntries(Object.entries(BIBLE_DIRS).map(([t, d]) => [d, t]));
-
 // ---------- utilitaires ----------
 
 export function slugify(text) {
@@ -104,7 +101,7 @@ export function stringifyDoc(data, body) {
 }
 
 export function parseDoc(text) {
-  const src = String(text ?? '').replace(/^﻿/, '').replace(/\r\n?/g, '\n');
+  const src = String(text ?? '').replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
   const m = src.match(/^---\n([\s\S]*?)\n---[ \t]*(?:\n|$)/);
   if (!m) return { data: {}, body: src };
   let body = src.slice(m[0].length);
@@ -113,11 +110,22 @@ export function parseDoc(text) {
 }
 
 // ---------- scènes et fiches ----------
+// En mémoire, l'app garde le modèle du prototype :
+//   scène  { id, title, status, text }
+//   fiche  { id, type: 'Personnage'|'Lieu'|'Lore', name, alias: 'a, b', notes }
+// Dans les fichiers, les clés sont en français et les alias forment une liste.
+// `file` (nom sans .md) mémorise le nom de fichier pour ne pas le changer
+// quand le titre change (historique git propre).
+
+export const BIBLE_DIRS = { Personnage: 'personnages', Lieu: 'lieux', Lore: 'lore' };
+const DIR_TO_TYPE = Object.fromEntries(Object.entries(BIBLE_DIRS).map(([t, d]) => [d, t]));
+
+const splitAlias = alias => String(alias ?? '').split(',').map(a => a.trim()).filter(Boolean);
 
 export function sceneToMarkdown(scene) {
   return stringifyDoc(
-    { id: scene.id, titre: scene.titre ?? '', statut: normalizeStatut(scene.statut) },
-    scene.texte,
+    { id: scene.id, titre: scene.title ?? '', statut: normalizeStatut(scene.status) },
+    scene.text,
   );
 }
 
@@ -125,53 +133,51 @@ export function markdownToScene(text, fallbackTitle = '') {
   const { data, body } = parseDoc(text);
   return {
     id: data.id || newId(),
-    titre: data.titre ?? fallbackTitle,
-    statut: normalizeStatut(data.statut),
-    texte: body,
+    title: data.titre ?? fallbackTitle,
+    status: normalizeStatut(data.statut),
+    text: body,
   };
 }
 
 export function ficheToMarkdown(fiche) {
   return stringifyDoc(
-    { id: fiche.id, nom: fiche.nom ?? '', alias: fiche.alias ?? [] },
+    { id: fiche.id, nom: fiche.name ?? '', alias: splitAlias(fiche.alias) },
     fiche.notes,
   );
 }
 
 export function markdownToFiche(text, type, fallbackName = '') {
   const { data, body } = parseDoc(text);
-  const alias = Array.isArray(data.alias) ? data.alias : data.alias ? [data.alias] : [];
+  const alias = Array.isArray(data.alias) ? data.alias : splitAlias(data.alias);
   return {
     id: data.id || newId(),
     type,
-    nom: data.nom ?? fallbackName,
-    alias: alias.map(String).filter(Boolean),
+    name: data.nom ?? fallbackName,
+    alias: alias.map(a => String(a).trim()).filter(Boolean).join(', '),
     notes: body,
   };
 }
 
 // ---------- projet complet ----------
-// Un projet : { id, titre, description, scenes: [...], fiches: [...] }
-// Chaque scène et fiche peut porter `fichier` (nom sans .md) : on le réutilise
-// pour ne pas renommer un fichier quand son titre change (historique git propre).
+// Projet : { id, name, description?, sceneId?, scenes: [...], bible: [...] }
 
 export function projectToFiles(project) {
   const files = new Map();
   const sceneNames = new Set();
   const order = [];
   for (const scene of project.scenes ?? []) {
-    const name = uniqueName(scene.fichier || slugify(scene.titre), sceneNames);
+    const name = uniqueName(scene.file || slugify(scene.title), sceneNames);
     order.push(name);
     files.set(`scenes/${name}.md`, sceneToMarkdown(scene));
   }
   const ficheNames = Object.fromEntries(Object.values(BIBLE_DIRS).map(d => [d, new Set()]));
-  for (const fiche of project.fiches ?? []) {
+  for (const fiche of project.bible ?? []) {
     const dir = BIBLE_DIRS[fiche.type] ?? 'lore';
-    const name = uniqueName(fiche.fichier || slugify(fiche.nom), ficheNames[dir]);
+    const name = uniqueName(fiche.file || slugify(fiche.name), ficheNames[dir]);
     files.set(`bible/${dir}/${name}.md`, ficheToMarkdown(fiche));
   }
   files.set('projet.md', stringifyDoc(
-    { id: project.id, titre: project.titre ?? '', scenes: order },
+    { id: project.id, titre: project.name ?? '', scenes: order },
     project.description,
   ));
   return files;
@@ -186,10 +192,10 @@ export function filesToProject(files) {
   const { data: meta, body: description } = parseDoc(byPath.get('projet.md') ?? '');
   const project = {
     id: meta.id || newId(),
-    titre: meta.titre ?? '',
+    name: meta.titre ?? '',
     description,
     scenes: [],
-    fiches: [],
+    bible: [],
   };
 
   const sceneFiles = new Map();
@@ -202,8 +208,9 @@ export function filesToProject(files) {
   const names = [...new Set(listed.filter(n => sceneFiles.has(n)))];
   const rest = [...sceneFiles.keys()].filter(n => !names.includes(n)).sort();
   for (const name of [...names, ...rest]) {
-    project.scenes.push({ ...markdownToScene(sceneFiles.get(name), name), fichier: name });
+    project.scenes.push({ ...markdownToScene(sceneFiles.get(name), name), file: name });
   }
+  project.sceneId = project.scenes[0]?.id;
 
   const fichePaths = [...byPath.keys()].filter(p => /^bible\/[^/]+\/[^/]+\.md$/i.test(p)).sort();
   for (const path of fichePaths) {
@@ -211,7 +218,7 @@ export function filesToProject(files) {
     const type = DIR_TO_TYPE[dir.toLowerCase()];
     if (!type) continue;
     const name = file.replace(/\.md$/i, '');
-    project.fiches.push({ ...markdownToFiche(byPath.get(path), type, name), fichier: name });
+    project.bible.push({ ...markdownToFiche(byPath.get(path), type, name), file: name });
   }
   return project;
 }

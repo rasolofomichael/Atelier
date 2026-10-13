@@ -217,3 +217,20 @@ test('menu : ouverture, fermeture au clic extérieur et avec Échap', async () =
   assert.ok(await page.isHidden('#menuPanel'));
   await ctx.close();
 });
+
+test('export Markdown (.zip) de tous les projets', async () => {
+  const ctx = await browser.newContext({ acceptDownloads: true });
+  const { page, errors } = await open(ctx);
+  await page.fill('#sceneText', 'Texte exporté.');
+  await page.click('#menuBtn');
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#zipBtn')]);
+  assert.match(dl.suggestedFilename(), /^atelier-.*\.zip$/);
+  const { execFileSync } = await import('node:child_process');
+  const names = execFileSync('python3', ['-I', '-c', 'import sys,zipfile;print("\\n".join(sorted(zipfile.ZipFile(sys.argv[1]).namelist())))', await dl.path()]).toString().trim().split('\n');
+  assert.ok(names.includes('exemple-la-ville-sous-la-pluie/projet.md'), names.join(', '));
+  assert.ok(names.includes('exemple-la-ville-sous-la-pluie/bible/personnages/lia.md'));
+  const scene = execFileSync('python3', ['-I', '-c', 'import sys,zipfile;print(zipfile.ZipFile(sys.argv[1]).read("exemple-la-ville-sous-la-pluie/scenes/ouverture-le-quai.md").decode())', await dl.path()]).toString();
+  assert.match(scene, /Texte exporté\./);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});

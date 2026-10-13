@@ -24,6 +24,7 @@ l'app propose « Mettre à jour » ; rien ne change pendant l'écriture sans acc
 - `index.html`, `styles.css`, `src/app.js` : l'application (sans framework, sans compilation).
 - `src/store.js` : stockage local (IndexedDB, repli localStorage), copies de secours.
 - `src/format.js` : conversion projet <-> fichiers Markdown (voir `FORMAT.md`).
+- `src/zip.js` : création d'archives .zip (export Markdown, menu « Exporter en Markdown »).
 - `sw.js`, `manifest.webmanifest`, `icons/`, `fonts/` : app installable et hors ligne. Tout nouveau fichier de l'app doit être ajouté à `ASSETS` dans `sw.js` (un test le vérifie).
 - `prototype/atelier.html` : prototype d'origine, gardé pour référence.
 

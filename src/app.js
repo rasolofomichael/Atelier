@@ -1,6 +1,8 @@
 import {
   openStore, readLegacy, isValidState, writeEmergency, readEmergency, clearEmergency,
 } from './store.js';
+import { workspaceToFiles } from './format.js';
+import { createZip } from './zip.js';
 
 const SAVE_DELAY = 400;                 // ms après la dernière frappe
 const BACKUP_EVERY = 10 * 60 * 1000;    // une copie de secours au plus toutes les 10 min
@@ -164,6 +166,31 @@ $("exportBtn").onclick=()=>{const p=P();const txt="# "+p.name+"\n\n"+p.scenes.ma
 function setTab(t){$("app").dataset.tab=t;document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.t===t))}
 document.querySelector(".tabs").onclick=e=>{const t=e.target.dataset.t;if(t)setTab(t)};
 
+// ---------- fichiers ----------
+
+const stamp = () => new Date().toISOString().slice(0, 16).replace(/[T:]/g, "-");
+
+// Sur téléphone : feuille de partage (« Enregistrer dans Fichiers »). Ailleurs : téléchargement.
+async function saveFile(blob, name) {
+  const file = new File([blob], name, { type: blob.type });
+  if (matchMedia("(pointer: coarse)").matches && navigator.canShare?.({ files: [file] })) {
+    try { await navigator.share({ files: [file] }); return; }
+    catch (err) { if (err.name === "AbortError") return; }
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+
+// Pas d'await avant le partage : Safari exige qu'il suive immédiatement le toucher.
+$("zipBtn").onclick = () => {
+  save();
+  const zip = createZip(workspaceToFiles(S));
+  saveFile(new Blob([zip], { type: "application/zip" }), `atelier-${stamp()}.zip`);
+};
+
 // ---------- sauvegardes ----------
 
 const dateFmt = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" });
@@ -201,14 +228,10 @@ $("backupList").onclick = e => {
     toast(`Copie du ${dateFmt.format(at)} restaurée`);
   }, "Restaurer");
 };
-$("dlJson").onclick = async () => {
-  await save();
+$("dlJson").onclick = () => {
+  save();
   const blob = new Blob([JSON.stringify({ format: "atelier", version: 1, exportedAt: new Date().toISOString(), data: S }, null, 2)], { type: "application/json" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `atelier-${new Date().toISOString().slice(0, 16).replace(/[T:]/g, "-")}.json`;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  saveFile(blob, `atelier-${stamp()}.json`);
 };
 $("importJson").onchange = async e => {
   const file = e.target.files[0];

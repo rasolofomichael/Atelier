@@ -222,3 +222,14 @@ export function filesToProject(files) {
   }
   return project;
 }
+
+// Tous les projets, chacun dans son dossier : { "le-roman/scenes/x.md": "...", ... }
+export function workspaceToFiles(state) {
+  const files = new Map();
+  const dirs = new Set();
+  for (const project of state.projects) {
+    const dir = uniqueName(project.dir || slugify(project.name), dirs);
+    for (const [path, content] of projectToFiles(project)) files.set(`${dir}/${path}`, content);
+  }
+  return files;
+}

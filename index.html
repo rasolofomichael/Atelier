@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#eef0ec" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#12151c" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#e9e9e4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101113" media="(prefers-color-scheme: dark)">
 <title>Atelier d'écriture</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
@@ -18,103 +18,132 @@
 <script type="module" src="src/app.js"></script>
 </head>
 <body>
-<div class="app" id="app" data-tab="ecrire">
-  <header>
-    <div class="brand">Atelier<span>.</span></div>
-    <select id="projectSel" aria-label="Projet" class="hide-focus"></select>
-    <div class="spacer"></div>
-    <button class="btn" id="focusBtn">Mode focus</button>
-    <div class="menu hide-focus">
-      <button class="btn" id="menuBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="menuPanel" aria-label="Menu">•••</button>
-      <div class="menu-panel" id="menuPanel" role="menu" hidden>
-        <button role="menuitem" id="renameBtn">Renommer le projet</button>
-        <button role="menuitem" id="newProject">Nouveau projet de fiction</button>
-        <button role="menuitem" id="newSongs">Nouveau recueil de chansons</button>
-        <button role="menuitem" id="exportBtn">Copier le texte du projet</button>
-        <button role="menuitem" id="zipBtn">Exporter en Markdown (.zip)</button>
-        <button role="menuitem" id="backupBtn">Sauvegardes</button>
+<div class="app" id="app" data-view="ecrire" data-pane="items">
+
+  <!-- Liste : recueil ou projet, avec ses éléments ou sa banque d'idées -->
+  <section class="liste" id="listePane" aria-label="Projet">
+    <div class="bar">
+      <div class="pills" role="tablist" aria-label="Afficher">
+        <button class="pill" role="tab" id="tabItems" data-pane="items" aria-selected="true">Chansons</button>
+        <button class="pill" role="tab" id="tabBank" data-pane="bank" aria-selected="false">Idées</button>
+      </div>
+      <span class="sp"></span>
+      <div class="menu">
+        <button class="round" id="menuBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="menuPanel" aria-label="Menu">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+        </button>
+        <div class="menu-panel" id="menuPanel" role="menu" hidden>
+          <button role="menuitem" id="projectsBtn">Projets…</button>
+          <button role="menuitem" id="exportBtn">Copier le texte du projet</button>
+          <button role="menuitem" id="zipBtn">Exporter en Markdown (.zip)</button>
+          <button role="menuitem" id="backupBtn">Sauvegardes</button>
+        </div>
+      </div>
+      <button class="round" id="addBtn" aria-label="Nouvelle chanson">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+    </div>
+
+    <div class="hero">
+      <button class="projet" id="projectBtn" aria-label="Changer de projet"><span id="projectName"></span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div class="big" id="bigCount" aria-live="polite"></div>
+      <div class="stats" id="totals"></div>
+    </div>
+
+    <div class="sheet">
+      <div class="pane-items">
+        <div class="cards" id="sceneList"></div>
+      </div>
+      <div class="pane-bank">
+        <div class="bank-head">
+          <h2 id="bankLabel">Bible de l'univers</h2>
+          <button class="pill dark small" id="addEntry">+ Fiche</button>
+        </div>
+        <div class="filters" id="filters"></div>
+        <div id="entries"></div>
+        <p class="hint" id="bankHint"></p>
       </div>
     </div>
-  </header>
-  <nav class="tabs" aria-label="Sections">
-    <button data-t="scenes" id="tabItems">Scènes</button>
-    <button data-t="ecrire" class="on">Écrire</button>
-    <button data-t="bible" id="tabBank">Bible</button>
-  </nav>
+  </section>
 
-  <aside class="rail">
-    <h2><span id="itemsLabel">Scènes</span> <button class="btn" id="addScene">+ Scène</button></h2>
-    <div class="list" id="sceneList"></div>
-    <div class="legend">
-      <span><i class="dot st-idee"></i>Idée</span>
-      <span><i class="dot st-brouillon"></i>Brouillon</span>
-      <span><i class="dot st-revise"></i>Révisé</span>
+  <!-- Écriture -->
+  <section class="ecrire" id="ecrirePane" aria-label="Écriture">
+    <div class="bar">
+      <button class="round back" id="backBtn" aria-label="Retour à la liste">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <span class="sp"></span>
+      <button class="round" id="focusBtn" aria-label="Mode focus" aria-pressed="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+      </button>
+      <button class="round" id="settingsBtn" aria-label="Réglages">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+      </button>
     </div>
-    <div class="total" id="totals"></div>
-  </aside>
 
-  <main>
-    <div class="page">
-      <div class="meta">
-        <input id="sceneTitle" aria-label="Titre de la scène" placeholder="Titre de la scène">
-        <select id="sceneStatus" aria-label="Statut">
-          <option value="idee">Idée</option>
-          <option value="brouillon">Brouillon</option>
-          <option value="revise">Révisé</option>
-        </select>
+    <div class="ehead">
+      <button class="eyebrow" id="eyebrow"></button>
+      <div class="ehead-row">
+        <textarea id="sceneTitle" rows="1" aria-label="Titre" placeholder="Titre"></textarea>
+        <button class="facts" id="facts" aria-label="Réglages"></button>
       </div>
-      <div class="songmeta" id="songMeta" hidden>
-        <select id="songKey" aria-label="Tonalité"></select>
-        <label class="tempo"><input id="songTempo" type="number" inputmode="numeric" min="20" max="300" placeholder="Tempo" aria-label="Tempo en BPM"> BPM</label>
-        <select id="songMeter" aria-label="Mesure"></select>
-        <select id="songStyle" aria-label="Style">
-          <option value="pop">Pop</option>
-          <option value="chanson">Chanson française</option>
-        </select>
-      </div>
-      <div class="tools">
-        <button class="btn" id="upBtn">↑ Monter</button>
-        <button class="btn" id="downBtn">↓ Descendre</button>
-        <button class="btn" id="delScene">Supprimer la scène</button>
-      </div>
-      <div class="tools sections" id="sectionTools" hidden aria-label="Insérer une section"></div>
+    </div>
+
+    <div class="paper">
       <div class="editor" id="editor">
         <div class="mirror" id="mirror" aria-hidden="true"></div>
         <textarea id="sceneText" aria-label="Texte" placeholder="Écris ici…"></textarea>
       </div>
-      <div class="status"><span id="wc">0 mot</span><span id="saved">Enregistré</span></div>
-      <details class="songnotes" id="songNotesBox" hidden>
-        <summary>Notes et références</summary>
-        <textarea id="songNotes" aria-label="Notes et références" placeholder="Intention, thème, artistes de référence, idées de production…"></textarea>
-      </details>
-      <div>
-        <h2 id="mentionsLabel">Présents dans cette scène</h2>
+      <div class="mentions-box" id="mentionsBox" hidden>
+        <h3 id="mentionsLabel"></h3>
         <div class="chips" id="mentions"></div>
       </div>
+      <div class="accessory" id="accessory">
+        <div class="song-only section-wrap">
+          <button class="pill dark" id="sectionBtn" aria-haspopup="menu" aria-expanded="false">+ Section</button>
+          <div class="section-menu" id="sectionMenu" role="menu" hidden></div>
+        </div>
+        <button class="pill song-only" id="analyseBtn" aria-pressed="true">Rimes</button>
+        <span class="sp"></span>
+        <span class="status"><span id="wc">0 mot</span> · <span id="saved">Enregistré</span></span>
+      </div>
     </div>
-  </main>
-
-  <aside class="bible">
-    <h2><span id="bankLabel">Bible de l'univers</span> <button class="btn" id="addEntry">+ Fiche</button></h2>
-    <div class="filters" id="filters"></div>
-    <div id="entries"></div>
-    <p class="hint" id="bankHint"></p>
-  </aside>
+  </section>
 </div>
-<div class="toast" id="toast" hidden></div>
-<div class="toast update" id="updateBar" hidden>Nouvelle version disponible <button class="btn" id="updateBtn">Mettre à jour</button></div>
 
-<dialog id="backupDlg" aria-labelledby="backupTitle">
-  <h2 id="backupTitle">Sauvegardes <button class="btn" id="closeDlg">Fermer</button></h2>
-  <p class="hint" id="storeInfo"></p>
-  <div class="tools">
-    <button class="btn" id="dlJson">Télécharger une copie</button>
-    <label class="btn">Importer une copie<input type="file" id="importJson" accept=".json,application/json" hidden></label>
+<!-- Réglages de l'élément en cours -->
+<dialog id="settingsDlg" class="sheet-dlg" aria-labelledby="settingsTitle">
+  <div class="dlg-head"><h2 id="settingsTitle">Réglages</h2><button class="pill dark small" id="settingsOk">OK</button></div>
+  <div id="settingsBody"></div>
+</dialog>
+
+<!-- Projets -->
+<dialog id="projectsDlg" class="sheet-dlg" aria-labelledby="projectsTitle">
+  <div class="dlg-head"><h2 id="projectsTitle">Projets</h2><button class="pill dark small" id="projectsOk">OK</button></div>
+  <label class="field"><span>Nom du projet en cours</span><input id="projectRename" autocomplete="off"></label>
+  <div class="project-list" id="projectList"></div>
+  <div class="row-actions">
+    <button class="pill" id="newSongs">+ Recueil de chansons</button>
+    <button class="pill" id="newProject">+ Projet de fiction</button>
   </div>
-  <h2>Copies automatiques</h2>
+</dialog>
+
+<!-- Sauvegardes -->
+<dialog id="backupDlg" class="sheet-dlg" aria-labelledby="backupTitle">
+  <div class="dlg-head"><h2 id="backupTitle">Sauvegardes</h2><button class="pill dark small" id="closeDlg">Fermer</button></div>
+  <p class="hint" id="storeInfo"></p>
+  <div class="row-actions">
+    <button class="pill" id="dlJson">Télécharger une copie</button>
+    <label class="pill">Importer une copie<input type="file" id="importJson" accept=".json,application/json" hidden></label>
+  </div>
+  <h3>Copies automatiques</h3>
   <p class="hint">Une copie toutes les 10 minutes d'écriture, plus avant chaque restauration ou import. Les 30 plus récentes sont gardées.</p>
   <div id="backupList"></div>
 </dialog>
+
+<div class="toast" id="toast" hidden></div>
+<div class="toast update" id="updateBar" hidden>Nouvelle version disponible <button class="pill small" id="updateBtn">Mettre à jour</button></div>
 <noscript>Atelier a besoin de JavaScript.</noscript>
 </body>
 </html>

@@ -39,7 +39,24 @@ async function open(ctx, { seed } = {}) {
   return { page, errors };
 }
 
+// Sur iPhone, la liste et l'écriture sont deux écrans : on revient à la liste si besoin.
+async function toList(page) {
+  if (await page.isVisible('#backBtn')) await page.click('#backBtn');
+}
+async function newSongbook(page, name = '') {
+  await toList(page);
+  await page.click('#projectBtn');
+  await page.click('#newSongs');
+  if (name) await page.keyboard.type(name);
+  await page.click('#projectsOk');
+}
+async function settings(page, pairs) {
+  await page.click('#settingsBtn');
+  for (const [set, v] of pairs) await page.click(`[data-set="${set}"][data-v="${v}"]`);
+}
+
 async function openBackups(page) {
+  await toList(page);
   await page.click('#menuBtn');
   await page.click('#backupBtn');
   await page.waitForSelector('#backupDlg[open]');
@@ -146,13 +163,62 @@ test('export puis import JSON', async () => {
   await ctx.close();
 });
 
-test('iPhone : onglets et absence de défilement horizontal', async () => {
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+const IPHONE = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true };
+
+test('iPhone : deux écrans (écriture puis liste), sans défilement horizontal', async () => {
+  const ctx = await browser.newContext(IPHONE);
   const { page, errors } = await open(ctx);
-  assert.ok(await page.isVisible('.tabs'));
-  assert.ok(!(await page.isVisible('.rail')));
+  // On reprend directement dans le texte.
+  assert.ok(await page.isVisible('#sceneText'));
+  assert.ok(await page.isHidden('#sceneList'));
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-  await page.screenshot({ path: process.env.SHOT_DIR ? `${process.env.SHOT_DIR}/mobile.png` : undefined });
+  await page.click('#backBtn');
+  assert.ok(await page.isVisible('#sceneList'));
+  assert.ok(await page.isHidden('#sceneText'));
+  assert.equal(await page.textContent('#bigCount'), '03SCÈNES');
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  // Une carte ouvre l'écriture.
+  await page.locator('.card').nth(1).click();
+  assert.equal(await page.inputValue('#sceneTitle'), 'La maison du passeur');
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test('ordinateur : liste et écriture côte à côte', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const { page, errors } = await open(ctx);
+  assert.ok(await page.isVisible('#sceneList'));
+  assert.ok(await page.isVisible('#sceneText'));
+  assert.ok(await page.isHidden('#backBtn'));
+  // Mode focus : la liste disparaît.
+  await page.click('#focusBtn');
+  assert.ok(await page.isHidden('#sceneList'));
+  await page.click('#focusBtn');
+  assert.ok(await page.isVisible('#sceneList'));
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test('couleurs : chaque carte a la sienne, différente de ses voisines, modifiable', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const { page, errors } = await open(ctx);
+  const colors = () => page.locator('.card').evaluateAll(els => els.map(e => [...e.classList].find(c => c.startsWith('c-'))));
+  const before = await colors();
+  assert.equal(before.length, 3);
+  assert.ok(before.every(Boolean));
+  await page.click('#addBtn');   // nouvelle scène après la première
+  const after = await colors();
+  assert.equal(after.length, 4);
+  assert.notEqual(after[1], after[0]);
+  assert.notEqual(after[1], after[2]);
+  // L'écran d'écriture prend la couleur de la scène.
+  assert.ok(await page.locator(`#ecrirePane.${after[1]}`).count());
+  await settings(page, [['couleur', 'olive']]);
+  await page.click('#settingsOk');
+  assert.equal((await colors())[1], 'c-olive');
+  await page.reload();
+  await page.waitForSelector('body.ready');
+  assert.equal((await colors())[1], 'c-olive');
   assert.deepEqual(errors, []);
   await ctx.close();
 });
@@ -203,14 +269,12 @@ test('nouvelle version : proposée, puis appliquée sans perdre le texte', async
 });
 
 test('menu : ouverture, fermeture au clic extérieur et avec Échap', async () => {
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const ctx = await browser.newContext(IPHONE);
   const { page } = await open(ctx);
-  // L'en-tête tient sur une ligne sur iPhone.
-  assert.ok((await page.locator('header').boundingBox()).height < 70);
+  await toList(page);
   await page.click('#menuBtn');
   assert.ok(await page.isVisible('#menuPanel'));
-  await page.screenshot({ path: process.env.SHOT_DIR ? `${process.env.SHOT_DIR}/menu.png` : undefined });
-  await page.click('#sceneText');
+  await page.locator('#totals small').first().click();   // zone neutre, hors du menu
   assert.ok(await page.isHidden('#menuPanel'));
   await page.click('#menuBtn');
   await page.keyboard.press('Escape');
@@ -235,72 +299,74 @@ test('export Markdown (.zip) de tous les projets', async () => {
   await ctx.close();
 });
 
-test('recueil de chansons : création, infos, sections, banque d\'idées', async () => {
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+test('recueil de chansons : création, réglages, sections, banque d\'idées', async () => {
+  const ctx = await browser.newContext(IPHONE);
   const { page, errors } = await open(ctx);
-  // La fiction n'affiche pas les champs de chanson.
-  assert.ok(await page.isHidden('#songMeta'));
+  assert.equal(await page.locator('#ecrirePane.songs').count(), 0);
 
-  await page.click('#menuBtn');
-  await page.click('#newSongs');
-  await page.keyboard.type('Premier album');
-  await page.keyboard.press('Enter');
+  await newSongbook(page, 'Premier album');
+  assert.equal(await page.textContent('#projectName'), 'Premier album');
   assert.equal(await page.textContent('#tabItems'), 'Chansons');
   assert.equal(await page.textContent('#tabBank'), 'Idées');
-  assert.ok(await page.isVisible('#songMeta'));
+  assert.equal(await page.textContent('#bigCount'), '01TITRES');
+  await page.click('.card');
+  assert.equal(await page.locator('#ecrirePane.songs').count(), 1);
   assert.equal(await page.inputValue('#sceneText'), '## Couplet 1\n\n\n## Refrain\n\n');
 
-  await page.selectOption('#songKey', 'Am');
-  await page.fill('#songTempo', '92');
-  await page.selectOption('#songMeter', '6/8');
+  // Réglages : tonalité, tempo, mesure, statut, notes.
+  await settings(page, [['note', 'A'], ['mode', 'min'], ['mesure', '6/8'], ['statut', 'revise']]);
+  await page.fill('#tempoInput', '92');
+  await page.fill('#notesInput', 'Réf : Bashung');
+  await page.click('[data-set="tempo"][data-v="1"]');
+  await page.click('#settingsOk');
+  assert.match(await page.textContent('#facts'), /Am.*La mineur.*93.*BPM · 6\/8/);
+  assert.equal(await page.textContent('#eyebrow'), 'Pop · Finie');
 
-  // Insertion d'un couplet numéroté à la fin du texte.
+  // Section insérée à la fin, couplet numéroté.
   await page.fill('#sceneText', '## Couplet 1\nIl pleut sur la ville\n\n## Refrain\nEt je reste là');
+  await page.click('#sectionBtn');
   await page.click('[data-sec="Couplet"]');
   await page.keyboard.type('Les heures creuses');
   assert.equal(await page.inputValue('#sceneText'),
     '## Couplet 1\nIl pleut sur la ville\n\n## Refrain\nEt je reste là\n\n## Couplet 2\nLes heures creuses');
 
-  await page.click('#songNotesBox summary');
-  await page.fill('#songNotes', 'Réf : Bashung');
-
   // Banque d'idées : catégories propres aux chansons, idée reconnue dans les paroles.
+  await toList(page);
   await page.click('#tabBank');
   assert.deepEqual(await page.locator('#filters button').allTextContents(), ['Tout', 'Titres', 'Phrases', 'Images', 'Thèmes']);
   await page.click('#addEntry');
   await page.keyboard.type('heures creuses');
-  assert.match(await page.textContent('#mentions'), /heures creuses/);
+  assert.equal(await page.locator('.entry.hit').count(), 1);
 
   await page.waitForFunction(() => document.getElementById('saved').textContent === 'Enregistré');
   await page.reload();
   await page.waitForSelector('body.ready');
-  assert.equal(await page.inputValue('#songKey'), 'Am');
-  assert.equal(await page.inputValue('#songTempo'), '92');
-  assert.equal(await page.inputValue('#songMeter'), '6/8');
-  assert.equal(await page.inputValue('#songNotes'), 'Réf : Bashung');
-  assert.equal(await page.locator('#sceneStatus option[value="revise"]').textContent(), 'Finie');
+  assert.match(await page.textContent('#facts'), /Am.*93/);
+  assert.match(await page.textContent('#mentions'), /heures creuses/);
+  await page.click('#settingsBtn');
+  assert.equal(await page.inputValue('#notesInput'), 'Réf : Bashung');
+  assert.equal(await page.getAttribute('[data-set="statut"][data-v="revise"]', 'aria-checked'), 'true');
+  assert.equal(await page.textContent('[data-set="statut"][data-v="revise"]'), 'Finie');
+  await page.click('#settingsOk');
 
   // Retour à la fiction : vocabulaire d'origine.
-  await page.selectOption('#projectSel', { index: 0 });
+  await toList(page);
+  await page.click('#projectBtn');
+  await page.locator('#projectList button').first().click();
+  await page.click('#projectsOk');
   assert.equal(await page.textContent('#tabItems'), 'Scènes');
-  assert.ok(await page.isHidden('#songMeta'));
-  await page.screenshot({ path: process.env.SHOT_DIR ? `${process.env.SHOT_DIR}/fiction-apres.png` : undefined });
-  await page.selectOption('#projectSel', { index: 1 });
-  await page.click('#tabItems');
-  await page.click('.scene');
-  await page.screenshot({ path: process.env.SHOT_DIR ? `${process.env.SHOT_DIR}/chanson.png` : undefined });
+  assert.equal(await page.locator('#ecrirePane.songs').count(), 0);
   assert.deepEqual(errors, []);
   await ctx.close();
 });
 
 test('syllabes et rimes : affichage aligné sur le texte, styles, désactivation', async () => {
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const ctx = await browser.newContext(IPHONE);
   const { page, errors } = await open(ctx);
   // Fiction : pas d'analyse.
   assert.ok(await page.isHidden('#mirror'));
-  await page.click('#menuBtn');
-  await page.click('#newSongs');
-  await page.keyboard.press('Enter');
+  await newSongbook(page);
+  await page.click('.card');
   const text = [
     '## Couplet 1',
     'La petite fille',
@@ -321,14 +387,14 @@ test('syllabes et rimes : affichage aligné sur le texte, styles, désactivation
   // Le calque a exactement la hauteur du texte (même découpage des lignes).
   const heights = await page.evaluate(() => [document.getElementById('mirror').scrollHeight, document.getElementById('sceneText').scrollHeight]);
   assert.equal(heights[0], heights[1]);
-  // Chaque compte est à la hauteur de sa ligne : la ligne longue occupe plusieurs lignes visuelles.
   const tops = await page.locator('#mirror .ml').evaluateAll(els => els.map(e => e.offsetTop));
   const lh = tops[2] - tops[1];
   assert.ok(tops[8] - tops[7] >= 2 * lh, 'la longue ligne doit faire au moins deux lignes');
   await page.screenshot({ path: process.env.SHOT_DIR ? `${process.env.SHOT_DIR}/analyse.png` : undefined });
 
   // Chanson française : le e muet compte devant une consonne.
-  await page.selectOption('#songStyle', 'chanson');
+  await settings(page, [['style', 'chanson']]);
+  await page.click('#settingsOk');
   assert.equal((await counts())[0], '5');
 
   // Désactivation, mémorisée.
@@ -337,7 +403,7 @@ test('syllabes et rimes : affichage aligné sur le texte, styles, désactivation
   await page.reload();
   await page.waitForSelector('body.ready');
   assert.ok(await page.isHidden('#mirror'));
-  assert.equal(await page.inputValue('#songStyle'), 'chanson');
+  assert.equal(await page.textContent('#eyebrow'), 'Chanson française · Idée');
   assert.deepEqual(errors, []);
   await ctx.close();
 });

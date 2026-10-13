@@ -1,6 +1,6 @@
 # Atelier
 
-Outil d'écriture personnel : fiction (scènes, bible d'univers) et chansons (sections, tonalité, tempo, banque d'idées), mode focus, hors ligne.
+Outil d'écriture personnel (direction visuelle « B » : couleurs douces, grands chiffres, cartes) : fiction (scènes, bible d'univers) et chansons (sections, tonalité, tempo, banque d'idées), mode focus, hors ligne.
 
 ## Lancer
 

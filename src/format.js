@@ -135,7 +135,7 @@ export function parseDoc(text) {
 
 // ---------- éléments et fiches ----------
 // En mémoire, l'app garde le modèle du prototype :
-//   élément { id, title, status, text }  (+ pour une chanson : key, tempo, meter, notes)
+//   élément { id, title, status, text, color? }  (+ pour une chanson : style, key, tempo, meter, notes)
 //   fiche   { id, type, name, alias: 'a, b', notes }
 // Un projet a un type (`kind`) : 'fiction' (par défaut) ou 'chansons'.
 // Dans les fichiers, les clés sont en français et les alias forment une liste.
@@ -162,6 +162,7 @@ const splitAlias = alias => String(alias ?? '').split(',').map(a => a.trim()).fi
 
 export function sceneToMarkdown(scene, kind = 'fiction') {
   const data = { id: scene.id, titre: scene.title ?? '', statut: normalizeStatut(scene.status) };
+  if (scene.color) data.couleur = scene.color;
   if (kind === 'chansons') {
     for (const [k, f] of Object.entries(SONG_FIELDS)) if (scene[k]) data[f] = String(scene[k]);
   }
@@ -176,6 +177,7 @@ export function markdownToScene(text, fallbackTitle = '', kind = 'fiction') {
     status: normalizeStatut(data.statut),
     text: body,
   };
+  if (typeof data.couleur === 'string' && data.couleur) scene.color = data.couleur;
   if (kind === 'chansons') {
     for (const [k, f] of Object.entries(SONG_FIELDS)) scene[k] = typeof data[f] === 'string' ? data[f] : '';
   }

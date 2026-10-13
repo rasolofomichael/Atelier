@@ -122,7 +122,7 @@ if (ensureColors()) await store.save(S);
 // ---------- navigation ----------
 // Mobile : deux écrans, la liste et l'écriture. Ordinateur : les deux côte à côte.
 
-function setView(v) { $("app").dataset.view = v; if (v === "liste") $("menuBtn").blur(); }
+function setView(v) { $("app").dataset.view = v; if (v === "ecrire") fitTitle(); }
 function setPane(p) {
   $("app").dataset.pane = p;
   $("tabItems").setAttribute("aria-selected", String(p === "items"));
@@ -180,7 +180,13 @@ function renderHead() {
     : `<span><b>${words(s.text).toLocaleString("fr-FR")}</b><small>mots</small></span>`;
 }
 
-function fitTitle() { const t = $("sceneTitle"); t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; }
+// Le titre s'agrandit sur plusieurs lignes si besoin. Écran caché : on ne mesure pas (la hauteur vaudrait 0).
+function fitTitle() {
+  const t = $("sceneTitle");
+  if (!t.offsetParent) { t.style.height = ""; return; }
+  t.style.height = "auto"; t.style.height = t.scrollHeight + "px";
+}
+addEventListener("resize", fitTitle);
 
 function renderEditor() {
   const s = Sc(), k = K();
@@ -543,16 +549,18 @@ $("sceneText").addEventListener("focus", () => setTimeout(placeAccessory, 300));
 $("sceneText").addEventListener("blur", placeAccessory);
 
 // ---------- syllabes et rimes ----------
-// Le calque #mirror reproduit le texte ligne à ligne (même police, même largeur),
-// en transparent : seuls les surlignages de rimes et les comptes en marge sont visibles.
+// Le calque #mirror reproduit le texte ligne à ligne (même police, même largeur), dans la
+// même case de grille que la zone de saisie : seuls les surlignages et les comptes se voient.
 
 let analyseOn=true;
 try{analyseOn=localStorage.getItem("atelier-analyse")!=="0"}catch{}
 
 function renderAnalysis(){
-  const ed=$("editor");
-  if(!ed.classList.contains("analyse"))return;
-  const s=Sc(),text=$("sceneText").value;
+  const text=$("sceneText").value;
+  // Sans analyse, le calque contient juste le texte (invisible) : il sert à donner sa hauteur
+  // à la zone de saisie. Le caractère invisible final garde la ligne vide après un retour.
+  if(!$("editor").classList.contains("analyse")){$("mirror").textContent=text+"\u200b";return}
+  const s=Sc();
   const rows=analyzeLyrics(text,s.style||"pop");
   const lines=text.split("\n");
   $("mirror").innerHTML=lines.map((line,i)=>{
@@ -568,9 +576,14 @@ function renderAnalysis(){
     const off=r.ref!=null&&r.ref!==r.syllables;
     return `<div class="ml">${html}<span class="cnt${off?" off":""}"><small>${r.syllables}${off?`/${r.ref}`:""}</small></span></div>`;
   }).join("");
-  $("mirror").scrollTop=$("sceneText").scrollTop;
 }
-$("sceneText").addEventListener("scroll",()=>{$("mirror").scrollTop=$("sceneText").scrollTop});
+// Frappe en fin de texte : le carton suit le curseur (la zone de texte ne défile pas elle-même).
+$("sceneText").addEventListener("input", e => {
+  const ta = e.target, sc = $("paperScroll");
+  if (ta.selectionEnd < ta.value.length - 1) return;
+  const gap = sc.scrollHeight - sc.scrollTop - sc.clientHeight;
+  if (gap > 0 && gap < 200) sc.scrollTop = sc.scrollHeight;
+});
 
 // ---------- menu ----------
 

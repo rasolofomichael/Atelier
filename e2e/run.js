@@ -311,6 +311,9 @@ test('recueil de chansons : création, réglages, sections, banque d\'idées', a
   assert.equal(await page.textContent('#bigCount'), '01TITRES');
   await page.click('.card');
   assert.equal(await page.locator('#ecrirePane.songs').count(), 1);
+  // Le titre est bien visible (sa hauteur ne doit pas être calculée écran caché).
+  assert.equal(await page.inputValue('#sceneTitle'), 'Première chanson');
+  assert.ok((await page.locator('#sceneTitle').boundingBox()).height > 25);
   assert.equal(await page.inputValue('#sceneText'), '## Couplet 1\n\n\n## Refrain\n\n');
 
   // Réglages : tonalité, tempo, mesure, statut, notes.
@@ -364,7 +367,7 @@ test('syllabes et rimes : affichage aligné sur le texte, styles, désactivation
   const ctx = await browser.newContext(IPHONE);
   const { page, errors } = await open(ctx);
   // Fiction : pas d'analyse.
-  assert.ok(await page.isHidden('#mirror'));
+  assert.equal(await page.locator('#editor.analyse, #mirror .cnt, #mirror mark').count(), 0);
   await newSongbook(page);
   await page.click('.card');
   const text = [
@@ -384,13 +387,31 @@ test('syllabes et rimes : affichage aligné sur le texte, styles, désactivation
   assert.deepEqual(await page.locator('#mirror .ml.h .cnt').allTextContents(), ['AABB', 'AB']);
   assert.equal(await page.locator('#mirror mark').count(), 6);   // fille, ville, tranquille ; toi, voix, là (assonance en pop)
 
-  // Le calque a exactement la hauteur du texte (même découpage des lignes).
-  const heights = await page.evaluate(() => [document.getElementById('mirror').scrollHeight, document.getElementById('sceneText').scrollHeight]);
-  assert.equal(heights[0], heights[1]);
+  // La zone de texte ne défile jamais elle-même : elle a la hauteur du calque.
+  const sizes = () => page.evaluate(() => {
+    const ta = document.getElementById('sceneText'), m = document.getElementById('mirror');
+    return { taScroll: ta.scrollHeight - ta.clientHeight, ta: ta.offsetHeight, m: m.offsetHeight };
+  });
+  let z = await sizes();
+  assert.ok(z.taScroll <= 1, `la zone de texte défile de ${z.taScroll}px`);
+  assert.equal(z.ta, z.m);
   const tops = await page.locator('#mirror .ml').evaluateAll(els => els.map(e => e.offsetTop));
   const lh = tops[2] - tops[1];
   assert.ok(tops[8] - tops[7] >= 2 * lh, 'la longue ligne doit faire au moins deux lignes');
   await page.screenshot({ path: process.env.SHOT_DIR ? `${process.env.SHOT_DIR}/analyse.png` : undefined });
+
+  // Texte long : c'est le carton qui défile, et le calque reste collé au texte, jusqu'au bout.
+  await page.fill('#sceneText', text + '\n\n## Refrain\n' + Array.from({ length: 40 }, (_, i) => i % 2 ? 'Je pense à toi' : 'Sous la pluie').join('\n') + '\n');
+  z = await sizes();
+  assert.ok(z.taScroll <= 1, `la zone de texte défile de ${z.taScroll}px`);
+  assert.equal(z.ta, z.m);
+  const offset = () => page.evaluate(() => document.getElementById('mirror').getBoundingClientRect().top - document.getElementById('sceneText').getBoundingClientRect().top);
+  await page.evaluate(() => { const sc = document.getElementById('paperScroll'); sc.scrollTop = sc.scrollHeight; });
+  assert.ok(await page.evaluate(() => document.getElementById('paperScroll').scrollTop > 500));
+  assert.equal(await offset(), 0);
+  // Le carton coupe ce qui dépasse de son arrondi.
+  assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.paper')).overflow), 'hidden');
+  await page.fill('#sceneText', text);
 
   // Chanson française : le e muet compte devant une consonne.
   await settings(page, [['style', 'chanson']]);
@@ -399,10 +420,10 @@ test('syllabes et rimes : affichage aligné sur le texte, styles, désactivation
 
   // Désactivation, mémorisée.
   await page.click('#analyseBtn');
-  assert.ok(await page.isHidden('#mirror'));
+  assert.equal(await page.locator('#editor.analyse, #mirror .cnt, #mirror mark').count(), 0);
   await page.reload();
   await page.waitForSelector('body.ready');
-  assert.ok(await page.isHidden('#mirror'));
+  assert.equal(await page.locator('#editor.analyse, #mirror .cnt, #mirror mark').count(), 0);
   assert.equal(await page.textContent('#eyebrow'), 'Chanson française · Idée');
   assert.deepEqual(errors, []);
   await ctx.close();

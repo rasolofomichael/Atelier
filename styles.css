@@ -142,20 +142,24 @@ body:not(.ready) .app{visibility:hidden}
 .facts>span{display:flex;flex-direction:column}
 .facts b{font-size:1.1rem;font-weight:700;letter-spacing:-.01em;line-height:1.15}
 .facts small{font-size:.7rem;font-weight:600;opacity:.85}
-.paper{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--sheet);color:var(--ink);border-radius:32px 32px 0 0}
+.paper{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--sheet);color:var(--ink);border-radius:32px 32px 0 0;overflow:hidden}
+/* C'est le carton qui défile, pas la zone de texte : texte et calque bougent ensemble,
+   et rien ne dépasse de l'arrondi. */
+.paper-scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;
+  -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 22px);mask-image:linear-gradient(to bottom,transparent 0,#000 22px)}
 
 /* Éditeur : la zone de texte est posée sur un calque (miroir) qui reproduit exactement
    ses lignes, pour afficher syllabes et rimes sous le texte. */
-.editor{position:relative;flex:1;min-height:200px;display:flex}
-#sceneText,.mirror{font-family:var(--body);font-size:1.12rem;line-height:1.75;padding:26px var(--pad) 16px;white-space:pre-wrap;overflow-wrap:break-word;word-break:normal;letter-spacing:normal;tab-size:4;margin:0;border:0}
-#sceneText{flex:1;position:relative;z-index:1;background:transparent;resize:none;width:100%}
+/* Éditeur : la zone de texte et son calque (miroir) occupent la même case de grille.
+   Le calque reproduit exactement les lignes et donne sa hauteur à la case : la zone de
+   texte grandit avec son contenu et ne défile jamais elle-même. */
+.editor{flex:1 0 auto;min-height:200px;display:grid;grid-template:minmax(0,1fr)/minmax(0,1fr)}
+#sceneText,.mirror{grid-area:1/1;font-family:var(--body);font-size:1.12rem;line-height:1.75;padding:26px var(--pad) 40px;white-space:pre-wrap;overflow-wrap:break-word;word-break:normal;letter-spacing:normal;tab-size:4;margin:0;border:0;min-width:0}
+#sceneText{position:relative;z-index:1;background:transparent;resize:none;width:100%;height:100%;overflow:hidden}
 #sceneText:focus{outline:none}
-.mirror{position:absolute;inset:0;overflow:hidden;color:transparent;pointer-events:none;display:none}
+.mirror{color:transparent;pointer-events:none;user-select:none}
 @media (max-width:900px){#sceneText,.mirror{font-size:1.1rem}}
-.editor.analyse .mirror{display:block}
 .editor.analyse #sceneText,.editor.analyse .mirror{padding-right:calc(var(--pad) + 2.8em)}
-.editor.analyse #sceneText{scrollbar-width:none}
-.editor.analyse #sceneText::-webkit-scrollbar{display:none}
 .ml{position:relative}
 .ml mark{color:transparent;border-radius:3px;padding:0 1px;margin:0 -1px}
 .r0{background:var(--r0)}.r1{background:var(--r1)}.r2{background:var(--r2)}.r3{background:var(--r3)}

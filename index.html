@@ -22,28 +22,6 @@
 
   <!-- Liste : recueil ou projet, avec ses éléments ou sa banque d'idées -->
   <section class="liste" id="listePane" aria-label="Projet">
-    <div class="bar">
-      <div class="pills" role="tablist" aria-label="Afficher">
-        <button class="pill" role="tab" id="tabItems" data-pane="items" aria-selected="true">Chansons</button>
-        <button class="pill" role="tab" id="tabBank" data-pane="bank" aria-selected="false">Idées</button>
-      </div>
-      <span class="sp"></span>
-      <div class="menu">
-        <button class="round" id="menuBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="menuPanel" aria-label="Menu">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
-        </button>
-        <div class="menu-panel" id="menuPanel" role="menu" hidden>
-          <button role="menuitem" id="projectsBtn">Projets…</button>
-          <button role="menuitem" id="exportBtn">Copier le texte du projet</button>
-          <button role="menuitem" id="zipBtn">Exporter en Markdown (.zip)</button>
-          <button role="menuitem" id="backupBtn">Sauvegardes</button>
-        </div>
-      </div>
-      <button class="round" id="addBtn" aria-label="Nouvelle chanson">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-      </button>
-    </div>
-
     <div class="hero">
       <button class="projet" id="projectBtn" aria-label="Changer de projet"><span id="projectName"></span>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
@@ -65,6 +43,22 @@
         <p class="hint" id="bankHint"></p>
       </div>
     </div>
+
+    <!-- Barre du bas : à portée du pouce -->
+    <nav class="tabbar" aria-label="Navigation">
+      <button class="tab" id="tabItems" data-pane="items" aria-current="page"><svg class="ic-song" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg><svg class="ic-fiction" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h8l4 4v14H7z"/><path d="M15 3v4h4M10 12h6M10 16h6"/></svg><span>Chansons</span></button>
+      <button class="tab" id="tabBank" data-pane="bank" aria-current="false"><svg class="ic-song" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 22h4"/><path d="M12 2a7 7 0 00-4 12.7V17h8v-2.3A7 7 0 0012 2z"/></svg><svg class="ic-fiction" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2z"/><path d="M4 21a2 2 0 012-2h13v2H6"/></svg><span>Idées</span></button>
+      <button class="fab" id="addBtn" aria-label="Nouvelle chanson"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+      <button class="tab" id="projectsTab"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg><span>Projets</span></button>
+      <div class="menu">
+        <button class="tab" id="menuBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="menuPanel"><svg class="dots" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg><span>Plus</span></button>
+        <div class="menu-panel" id="menuPanel" role="menu" hidden>
+          <button role="menuitem" id="exportBtn">Copier le texte du projet</button>
+          <button role="menuitem" id="zipBtn">Exporter en Markdown (.zip)</button>
+          <button role="menuitem" id="backupBtn">Sauvegardes</button>
+        </div>
+      </div>
+    </nav>
   </section>
 
   <!-- Écriture -->

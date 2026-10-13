@@ -125,11 +125,11 @@ if (ensureColors()) await store.save(S);
 function setView(v) { $("app").dataset.view = v; if (v === "ecrire") fitTitle(); }
 function setPane(p) {
   $("app").dataset.pane = p;
-  $("tabItems").setAttribute("aria-selected", String(p === "items"));
-  $("tabBank").setAttribute("aria-selected", String(p === "bank"));
+  $("tabItems").setAttribute("aria-current", p === "items" ? "page" : "false");
+  $("tabBank").setAttribute("aria-current", p === "bank" ? "page" : "false");
   $("addBtn").setAttribute("aria-label", p === "items" ? K().addLabel : `Nouvelle ${K().addEntry.toLowerCase()}`);
 }
-document.querySelector(".pills").onclick = e => { const p = e.target.closest("[data-pane]")?.dataset.pane; if (p) setPane(p); };
+for (const t of [$("tabItems"), $("tabBank")]) t.onclick = () => { setPane(t.dataset.pane); $("listePane").scrollTop = 0; };
 
 // ---------- rendu ----------
 
@@ -146,8 +146,8 @@ function renderProjects() {
   const rest = [c("brouillon") && plural(c("brouillon"), "brouillon"), c("idee") && plural(c("idee"), "idée")].filter(Boolean).join(", ") || "rien en cours";
   const tot = p.scenes.reduce((a, s) => a + words(s.text), 0);
   $("totals").innerHTML = `<span><b>${k.done(c("revise"))}</b><small>${rest}</small></span><span><b>${tot.toLocaleString("fr-FR")}</b><small>mots écrits</small></span>`;
-  $("tabItems").textContent = k.items;
-  $("tabBank").textContent = k.bankTab;
+  $("tabItems").querySelector("span").textContent = k.items;
+  $("tabBank").querySelector("span").textContent = k.bankTab;
 }
 
 function renderScenes() {
@@ -211,6 +211,7 @@ function renderKind() {
   $("bankHint").textContent = k.bankHint;
   if (!k.types.some(([t]) => t === filter)) filter = "all";
   $("filters").innerHTML = [["all", "Tout"], ...k.types].map(([f, l]) => `<button data-f="${esc(f)}"${f === filter ? ' class="on"' : ""}>${esc(l)}</button>`).join("");
+  $("app").classList.toggle("kind-songs", !!k.songs);
   setPane($("app").dataset.pane);
 }
 
@@ -393,7 +394,7 @@ function renderProjectsDlg() {
 }
 function openProjects() { renderProjectsDlg(); $("projectsDlg").showModal(); }
 $("projectBtn").onclick = openProjects;
-$("projectsBtn").onclick = openProjects;
+$("projectsTab").onclick = openProjects;
 $("projectsOk").onclick = () => $("projectsDlg").close();
 $("projectList").onclick = e => {
   const b = e.target.closest("[data-pid]"); if (!b) return;

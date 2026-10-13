@@ -121,3 +121,12 @@ main{padding-bottom:max(16px,env(safe-area-inset-bottom))}
   /* Safari iOS zoome sur tout champ en dessous de 16px : on l'évite. */
   input,select,textarea,.entry input,.entry textarea,.entry select,#sceneStatus,#projectSel{font-size:16px}
 }
+/* Chansons */
+.songmeta{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.songmeta[hidden],.sections[hidden],.songnotes[hidden]{display:none}
+.songmeta select,.songmeta input{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:4px 6px;font-size:.8rem}
+.songmeta .tempo{display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:.72rem;color:var(--muted)}
+.songmeta input{width:5.5em;font-family:var(--mono)}
+.sections .btn{border-style:dashed}
+.songnotes summary{cursor:pointer;font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+.songnotes textarea{width:100%;min-height:120px;margin-top:8px;background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:10px;font-family:var(--body);font-size:.95rem;line-height:1.5;resize:vertical}

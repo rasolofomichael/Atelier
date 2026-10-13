@@ -93,3 +93,39 @@ test('valeurs par défaut', () => {
   assert.equal(markdownToScene('---\nstatut: inconnu\n---\n').status, 'idee');
   assert.equal(markdownToFiche('', 'Lieu', 'Port').alias, '');
 });
+
+test('notes sur plusieurs lignes : bloc lisible et aller-retour exact', async () => {
+  const { stringifyFrontMatter, parseFrontMatter } = await import('../src/format.js');
+  for (const notes of ['Une ligne', 'Deux\nlignes', 'Fin\n', 'A\n\nB\n', '  indenté', 'x\n\n', '---\n', 'a: b\n# pas un commentaire\n  - pas une liste']) {
+    assert.deepEqual(parseFrontMatter(stringifyFrontMatter({ notes, apres: 'ok' })), { notes, apres: 'ok' }, JSON.stringify(notes));
+  }
+  assert.equal(stringifyFrontMatter({ notes: 'Intention :\nballade\n' }), 'notes: |\n  Intention :\n  ballade');
+});
+
+test('projet de chansons : fichiers et aller-retour', () => {
+  const recueil = {
+    id: 'r1', name: 'Premier album', kind: 'chansons', description: '',
+    scenes: [
+      { id: 'c1', title: 'Ville sous la pluie', status: 'brouillon', text: '## Couplet 1\nIl pleut sur la ville\n\n## Refrain\nEt je reste là\n',
+        key: 'Am', tempo: '92', meter: '4/4', notes: 'Réf : Bashung.\nGuitare sèche.' },
+      { id: 'c2', title: 'Sans tonalité', status: 'idee', text: '', key: '', tempo: '', meter: '', notes: '' },
+    ],
+    bible: [
+      { id: 'i1', type: 'Titre', name: 'Les heures creuses', alias: '', notes: '' },
+      { id: 'i2', type: 'Thème', name: 'Le départ', alias: 'partir, quitter', notes: '' },
+    ],
+  };
+  const files = projectToFiles(recueil);
+  assert.deepEqual([...files.keys()].sort(), [
+    'chansons/sans-tonalite.md', 'chansons/ville-sous-la-pluie.md',
+    'idees/themes/le-depart.md', 'idees/titres/les-heures-creuses.md', 'projet.md',
+  ]);
+  assert.equal(files.get('chansons/ville-sous-la-pluie.md'),
+    '---\nid: c1\ntitre: Ville sous la pluie\nstatut: brouillon\ntonalite: Am\ntempo: "92"\nmesure: "4/4"\nnotes: |-\n  Réf : Bashung.\n  Guitare sèche.\n---\n\n## Couplet 1\nIl pleut sur la ville\n\n## Refrain\nEt je reste là\n');
+  assert.match(files.get('projet.md'), /type: chansons\nchansons:\n  - ville-sous-la-pluie/);
+  const back = filesToProject(files);
+  assert.equal(back.kind, 'chansons');
+  assert.deepEqual(back.scenes.map(({ file, ...s }) => s), recueil.scenes);
+  const byId = a => [...a].sort((x, y) => x.id.localeCompare(y.id)).map(({ file, ...f }) => f);
+  assert.deepEqual(byId(back.bible), recueil.bible);
+});

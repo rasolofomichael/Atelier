@@ -11,6 +11,7 @@ const ASSETS = [
   'src/app.js',
   'src/store.js',
   'src/format.js',
+  'src/kinds.js',
   'src/zip.js',
   'fonts/bricolage-grotesque-normal-latin-3b58e8.woff2',
   'fonts/bricolage-grotesque-normal-latin-ext-10d6a5.woff2',

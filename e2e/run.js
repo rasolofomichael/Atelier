@@ -234,3 +234,61 @@ test('export Markdown (.zip) de tous les projets', async () => {
   assert.deepEqual(errors, []);
   await ctx.close();
 });
+
+test('recueil de chansons : création, infos, sections, banque d\'idées', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const { page, errors } = await open(ctx);
+  // La fiction n'affiche pas les champs de chanson.
+  assert.ok(await page.isHidden('#songMeta'));
+
+  await page.click('#menuBtn');
+  await page.click('#newSongs');
+  await page.keyboard.type('Premier album');
+  await page.keyboard.press('Enter');
+  assert.equal(await page.textContent('#tabItems'), 'Chansons');
+  assert.equal(await page.textContent('#tabBank'), 'Idées');
+  assert.ok(await page.isVisible('#songMeta'));
+  assert.equal(await page.inputValue('#sceneText'), '## Couplet 1\n\n\n## Refrain\n\n');
+
+  await page.selectOption('#songKey', 'Am');
+  await page.fill('#songTempo', '92');
+  await page.selectOption('#songMeter', '6/8');
+
+  // Insertion d'un couplet numéroté à la fin du texte.
+  await page.fill('#sceneText', '## Couplet 1\nIl pleut sur la ville\n\n## Refrain\nEt je reste là');
+  await page.click('[data-sec="Couplet"]');
+  await page.keyboard.type('Les heures creuses');
+  assert.equal(await page.inputValue('#sceneText'),
+    '## Couplet 1\nIl pleut sur la ville\n\n## Refrain\nEt je reste là\n\n## Couplet 2\nLes heures creuses');
+
+  await page.click('#songNotesBox summary');
+  await page.fill('#songNotes', 'Réf : Bashung');
+
+  // Banque d'idées : catégories propres aux chansons, idée reconnue dans les paroles.
+  await page.click('#tabBank');
+  assert.deepEqual(await page.locator('#filters button').allTextContents(), ['Tout', 'Titres', 'Phrases', 'Images', 'Thèmes']);
+  await page.click('#addEntry');
+  await page.keyboard.type('heures creuses');
+  assert.match(await page.textContent('#mentions'), /heures creuses/);
+
+  await page.waitForFunction(() => document.getElementById('saved').textContent === 'Enregistré');
+  await page.reload();
+  await page.waitForSelector('body.ready');
+  assert.equal(await page.inputValue('#songKey'), 'Am');
+  assert.equal(await page.inputValue('#songTempo'), '92');
+  assert.equal(await page.inputValue('#songMeter'), '6/8');
+  assert.equal(await page.inputValue('#songNotes'), 'Réf : Bashung');
+  assert.equal(await page.locator('#sceneStatus option[value="revise"]').textContent(), 'Finie');
+
+  // Retour à la fiction : vocabulaire d'origine.
+  await page.selectOption('#projectSel', { index: 0 });
+  assert.equal(await page.textContent('#tabItems'), 'Scènes');
+  assert.ok(await page.isHidden('#songMeta'));
+  await page.screenshot({ path: process.env.SHOT_DIR ? `${process.env.SHOT_DIR}/fiction-apres.png` : undefined });
+  await page.selectOption('#projectSel', { index: 1 });
+  await page.click('#tabItems');
+  await page.click('.scene');
+  await page.screenshot({ path: process.env.SHOT_DIR ? `${process.env.SHOT_DIR}/chanson.png` : undefined });
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});

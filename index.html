@@ -28,7 +28,8 @@
       <button class="btn" id="menuBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="menuPanel" aria-label="Menu">•••</button>
       <div class="menu-panel" id="menuPanel" role="menu" hidden>
         <button role="menuitem" id="renameBtn">Renommer le projet</button>
-        <button role="menuitem" id="newProject">Nouveau projet</button>
+        <button role="menuitem" id="newProject">Nouveau projet de fiction</button>
+        <button role="menuitem" id="newSongs">Nouveau recueil de chansons</button>
         <button role="menuitem" id="exportBtn">Copier le texte du projet</button>
         <button role="menuitem" id="zipBtn">Exporter en Markdown (.zip)</button>
         <button role="menuitem" id="backupBtn">Sauvegardes</button>
@@ -36,13 +37,13 @@
     </div>
   </header>
   <nav class="tabs" aria-label="Sections">
-    <button data-t="scenes">Scènes</button>
+    <button data-t="scenes" id="tabItems">Scènes</button>
     <button data-t="ecrire" class="on">Écrire</button>
-    <button data-t="bible">Bible</button>
+    <button data-t="bible" id="tabBank">Bible</button>
   </nav>
 
   <aside class="rail">
-    <h2>Scènes <button class="btn" id="addScene">+ Scène</button></h2>
+    <h2><span id="itemsLabel">Scènes</span> <button class="btn" id="addScene">+ Scène</button></h2>
     <div class="list" id="sceneList"></div>
     <div class="legend">
       <span><i class="dot st-idee"></i>Idée</span>
@@ -62,30 +63,35 @@
           <option value="revise">Révisé</option>
         </select>
       </div>
+      <div class="songmeta" id="songMeta" hidden>
+        <select id="songKey" aria-label="Tonalité"></select>
+        <label class="tempo"><input id="songTempo" type="number" inputmode="numeric" min="20" max="300" placeholder="Tempo" aria-label="Tempo en BPM"> BPM</label>
+        <select id="songMeter" aria-label="Mesure"></select>
+      </div>
       <div class="tools">
         <button class="btn" id="upBtn">↑ Monter</button>
         <button class="btn" id="downBtn">↓ Descendre</button>
         <button class="btn" id="delScene">Supprimer la scène</button>
       </div>
+      <div class="tools sections" id="sectionTools" hidden aria-label="Insérer une section"></div>
       <textarea id="sceneText" aria-label="Texte de la scène" placeholder="Écris ici…"></textarea>
       <div class="status"><span id="wc">0 mot</span><span id="saved">Enregistré</span></div>
+      <details class="songnotes" id="songNotesBox" hidden>
+        <summary>Notes et références</summary>
+        <textarea id="songNotes" aria-label="Notes et références" placeholder="Intention, thème, artistes de référence, idées de production…"></textarea>
+      </details>
       <div>
-        <h2>Présents dans cette scène</h2>
+        <h2 id="mentionsLabel">Présents dans cette scène</h2>
         <div class="chips" id="mentions"></div>
       </div>
     </div>
   </main>
 
   <aside class="bible">
-    <h2>Bible de l'univers <button class="btn" id="addEntry">+ Fiche</button></h2>
-    <div class="filters" id="filters">
-      <button data-f="all" class="on">Tout</button>
-      <button data-f="Personnage">Personnages</button>
-      <button data-f="Lieu">Lieux</button>
-      <button data-f="Lore">Lore</button>
-    </div>
+    <h2><span id="bankLabel">Bible de l'univers</span> <button class="btn" id="addEntry">+ Fiche</button></h2>
+    <div class="filters" id="filters"></div>
     <div id="entries"></div>
-    <p class="hint">Les noms de fiches repérés dans la scène s'allument en bleu. Les alias se séparent par des virgules.</p>
+    <p class="hint" id="bankHint"></p>
   </aside>
 </div>
 <div class="toast" id="toast" hidden></div>

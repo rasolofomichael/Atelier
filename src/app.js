@@ -3,6 +3,7 @@ import {
 } from './store.js';
 import { workspaceToFiles } from './format.js';
 import { createZip } from './zip.js';
+import { kindOf, fmtWords, KEYS, METERS, SECTIONS } from './kinds.js';
 
 const SAVE_DELAY = 400;                 // ms après la dernière frappe
 const BACKUP_EVERY = 10 * 60 * 1000;    // une copie de secours au plus toutes les 10 min
@@ -22,8 +23,9 @@ function sample() {
 }
 
 const $ = id => document.getElementById(id);
-const words = t => (t.trim().match(/\S+/g) || []).length;
-const fmt = n => n.toLocaleString("fr-FR") + (n > 1 ? " mots" : " mot");
+// Un mot contient au moins une lettre ou un chiffre : « ## » ou « — » ne comptent pas.
+const words = t => (t.match(/\S*[\p{L}\p{N}]\S*/gu) || []).length;
+const fmt = fmtWords;
 const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const totalWords = state => state.projects.reduce((a, p) => a + p.scenes.reduce((b, s) => b + words(s.text), 0), 0);
 
@@ -58,6 +60,7 @@ const persisted = await navigator.storage?.persist?.().catch(() => false) ?? fal
 let filter = "all", saveT, saving = null, pending = false;
 const P = () => S.projects.find(p => p.id === S.current) || S.projects[0];
 const Sc = () => { const p = P(); return p.scenes.find(s => s.id === p.sceneId) || p.scenes[0]; };
+const K = () => kindOf(P());
 
 async function backupNow(reason) {
   lastBackupAt = await store.backup(S, reason);
@@ -103,8 +106,8 @@ function renderScenes(){
   const p=P(),cur=Sc();
   $("sceneList").innerHTML=p.scenes.map(s=>`<button class="scene${s===cur?" on":""}" data-id="${s.id}"><i class="dot st-${s.status}"></i><span class="t">${esc(s.title||"Sans titre")}</span><span class="n">${words(s.text)}</span></button>`).join("");
   const tot=p.scenes.reduce((a,s)=>a+words(s.text),0);
-  const c=k=>p.scenes.filter(s=>s.status===k).length;
-  $("totals").innerHTML=`<span>${fmt(tot)} au total</span><span>${p.scenes.length} scènes · ${c("revise")} révisées</span><span>≈ ${Math.max(1,Math.round(tot/250))} page${tot>375?"s":""} de roman</span>`;
+  const done=p.scenes.filter(s=>s.status==="revise").length;
+  $("totals").innerHTML=K().totals(p.scenes.length,tot,done).map(t=>`<span>${t}</span>`).join("");
 }
 function renderEditor(){
   const s=Sc();if(!s)return;
@@ -112,6 +115,25 @@ function renderEditor(){
   if(document.activeElement!==$("sceneText"))$("sceneText").value=s.text;
   $("sceneStatus").value=s.status;
   $("wc").textContent=fmt(words(s.text));
+  if(K().songs){
+    $("songKey").value=s.key||"";$("songMeter").value=s.meter||"";
+    if(document.activeElement!==$("songTempo"))$("songTempo").value=s.tempo||"";
+    if(document.activeElement!==$("songNotes"))$("songNotes").value=s.notes||"";
+  }
+}
+// Libellés et champs qui dépendent du type de projet.
+function renderKind(){
+  const k=K(),songs=!!k.songs;
+  $("itemsLabel").textContent=k.items;$("tabItems").textContent=k.items;$("addScene").textContent=k.add;
+  $("bankLabel").textContent=k.bank;$("tabBank").textContent=k.bankTab;$("addEntry").textContent=k.addEntry;
+  $("mentionsLabel").textContent=k.mentions;$("bankHint").textContent=k.bankHint;
+  $("sceneTitle").placeholder=k.titlePh;$("sceneText").placeholder=k.textPh;
+  if(!armed)$("delScene").textContent=k.del;
+  [...$("sceneStatus").options].forEach(o=>o.textContent=k.statuses[o.value]);
+  document.querySelectorAll(".legend span").forEach((el,i)=>el.lastChild.textContent=Object.values(k.statuses)[i]);
+  $("songMeta").hidden=$("sectionTools").hidden=$("songNotesBox").hidden=!songs;
+  if(!k.types.some(([t])=>t===filter))filter="all";
+  $("filters").innerHTML=[["all","Tout"],...k.types].map(([f,l])=>`<button data-f="${esc(f)}"${f===filter?' class="on"':""}>${esc(l)}</button>`).join("");
 }
 function names(e){return [e.name,...(e.alias||"").split(",")].map(x=>x.trim()).filter(Boolean)}
 function hits(){
@@ -120,21 +142,22 @@ function hits(){
 }
 function renderMentions(){
   const h=hits();
-  $("mentions").innerHTML=h.length?h.map(e=>`<button class="chip" data-id="${e.id}">${esc(e.name)}</button>`).join(""):`<span class="hint">Aucune fiche de la bible n'apparaît encore dans cette scène.</span>`;
+  $("mentions").innerHTML=h.length?h.map(e=>`<button class="chip" data-id="${e.id}">${esc(e.name)}</button>`).join(""):`<span class="hint">${esc(K().noMentions)}</span>`;
   document.querySelectorAll(".entry").forEach(d=>d.classList.toggle("hit",h.some(e=>e.id===d.dataset.id)));
 }
 function renderBible(open){
+  const k=K();
   const list=P().bible.filter(e=>filter==="all"||e.type===filter);
   $("entries").innerHTML=list.map(e=>`<details class="entry" data-id="${e.id}"${e.id===open?" open":""}>
     <summary><span class="nm">${esc(e.name||"Sans nom")}</span><span class="ty">${e.type}</span></summary>
-    <input id="n-${e.id}" data-k="name" value="${esc(e.name)}" placeholder="Nom" aria-label="Nom">
-    <input id="a-${e.id}" data-k="alias" value="${esc(e.alias||"")}" placeholder="Alias, surnoms" aria-label="Alias">
-    <textarea id="t-${e.id}" data-k="notes" placeholder="Notes, apparence, histoire, règles…" aria-label="Notes">${esc(e.notes||"")}</textarea>
-    <div class="row"><select id="y-${e.id}" data-k="type" aria-label="Type">${["Personnage","Lieu","Lore"].map(t=>`<option${t===e.type?" selected":""}>${t}</option>`).join("")}</select><button class="del" data-del="${e.id}">Supprimer</button></div>
-  </details>`).join("")||`<p class="hint">Aucune fiche dans cette catégorie.</p>`;
+    <input id="n-${e.id}" data-k="name" value="${esc(e.name)}" placeholder="${esc(k.namePh)}" aria-label="${esc(k.namePh)}">
+    <input id="a-${e.id}" data-k="alias" value="${esc(e.alias||"")}" placeholder="${esc(k.aliasPh)}" aria-label="${esc(k.aliasPh)}">
+    <textarea id="t-${e.id}" data-k="notes" placeholder="${esc(k.notesPh)}" aria-label="Notes">${esc(e.notes||"")}</textarea>
+    <div class="row"><select id="y-${e.id}" data-k="type" aria-label="Type">${k.types.map(([t])=>`<option${t===e.type?" selected":""}>${esc(t)}</option>`).join("")}</select><button class="del" data-del="${e.id}">Supprimer</button></div>
+  </details>`).join("")||`<p class="hint">${esc(k.emptyBank)}</p>`;
   renderMentions();
 }
-function all(){renderProjects();renderScenes();renderEditor();renderBible()}
+function all(){renderProjects();renderKind();renderScenes();renderEditor();renderBible()}
 
 // ---------- interactions (reprises du prototype) ----------
 
@@ -142,20 +165,22 @@ $("sceneList").onclick=e=>{const b=e.target.closest(".scene");if(!b)return;P().s
 $("sceneTitle").oninput=e=>{Sc().title=e.target.value;queue();renderScenes();renderMentions()};
 $("sceneText").oninput=e=>{Sc().text=e.target.value;queue();$("wc").textContent=fmt(words(e.target.value));renderScenes();renderMentions()};
 $("sceneStatus").onchange=e=>{Sc().status=e.target.value;save();renderScenes()};
-$("addScene").onclick=()=>{const p=P(),s={id:uid(),title:"Nouvelle scène",status:"idee",text:""};const i=p.scenes.indexOf(Sc());p.scenes.splice(i+1,0,s);p.sceneId=s.id;save();renderScenes();renderEditor();renderMentions();setTab("ecrire");$("sceneTitle").select()};
+function newItem(kind,title){const s={id:uid(),title,status:"idee",text:kind.template};if(kind.songs)Object.assign(s,{key:"",tempo:"",meter:"",notes:""});return s}
+$("addScene").onclick=()=>{const p=P(),s=newItem(K(),K().newItem);const i=p.scenes.indexOf(Sc());p.scenes.splice(i+1,0,s);p.sceneId=s.id;save();renderScenes();renderEditor();renderMentions();setTab("ecrire");$("sceneTitle").select()};
 function move(d){const p=P(),i=p.scenes.indexOf(Sc()),j=i+d;if(j<0||j>=p.scenes.length)return;[p.scenes[i],p.scenes[j]]=[p.scenes[j],p.scenes[i]];save();renderScenes()}
 $("upBtn").onclick=()=>move(-1);$("downBtn").onclick=()=>move(1);
 let armed=null;
 function arm(btn,key,fn,label){if(armed===key){fn();armed=null;return}armed=key;btn.textContent="Confirmer ?";btn.classList.add("arm");setTimeout(()=>{if(armed===key){armed=null;btn.textContent=label;btn.classList.remove("arm")}},2500)}
-$("delScene").onclick=e=>arm(e.target,"scene",()=>{const p=P();if(p.scenes.length<2){toast("Garde au moins une scène");e.target.textContent="Supprimer la scène";return}const i=p.scenes.indexOf(Sc());p.scenes.splice(i,1);p.sceneId=p.scenes[Math.max(0,i-1)].id;save();e.target.textContent="Supprimer la scène";all()},"Supprimer la scène");
+$("delScene").onclick=e=>arm(e.target,"scene",()=>{const p=P();e.target.classList.remove("arm");e.target.textContent=K().del;if(p.scenes.length<2){toast(K().keepOne);return}const i=p.scenes.indexOf(Sc());p.scenes.splice(i,1);p.sceneId=p.scenes[Math.max(0,i-1)].id;save();all()},K().del);
 $("projectSel").onchange=e=>{S.current=e.target.value;save();all()};
-$("newProject").onclick=()=>{const s={id:uid(),title:"Première scène",status:"idee",text:""};const p={id:uid(),name:"Nouveau projet",sceneId:s.id,scenes:[s],bible:[]};S.projects.push(p);S.current=p.id;save();all();
-  renameProject()};
+function newProject(kindName){const p={id:uid(),scenes:[],bible:[]};if(kindName!=="fiction")p.kind=kindName;const k=kindOf(p);const s=newItem(k,k.firstItem);Object.assign(p,{name:k.newProjectName,sceneId:s.id,scenes:[s]});S.projects.push(p);S.current=p.id;save();all();renameProject()}
+$("newProject").onclick=()=>newProject("fiction");
+$("newSongs").onclick=()=>newProject("chansons");
 const selEl=$("projectSel");
 function renameProject(){const p=P();const n=document.createElement("input");n.value=p.name;n.id="pname";n.className="btn";n.style.maxWidth="220px";n.setAttribute("aria-label","Nom du projet");selEl.replaceWith(n);n.select();
-  n.onblur=()=>{p.name=n.value.trim()||"Nouveau projet";n.replaceWith(selEl);save();renderProjects()};n.onkeydown=k=>{if(k.key==="Enter")n.blur()}}
+  n.onblur=()=>{p.name=n.value.trim()||K().newProjectName;n.replaceWith(selEl);save();renderProjects()};n.onkeydown=k=>{if(k.key==="Enter")n.blur()}}
 $("renameBtn").onclick=renameProject;
-$("addEntry").onclick=()=>{const e={id:uid(),type:filter==="all"?"Personnage":filter,name:"",alias:"",notes:""};P().bible.unshift(e);save();renderBible(e.id);$("n-"+e.id).focus();setTab("bible")};
+$("addEntry").onclick=()=>{const e={id:uid(),type:filter==="all"?K().types[0][0]:filter,name:"",alias:"",notes:""};P().bible.unshift(e);save();renderBible(e.id);$("n-"+e.id).focus();setTab("bible")};
 $("entries").oninput=e=>{const d=e.target.closest(".entry"),k=e.target.dataset.k;if(!d||!k)return;const en=P().bible.find(x=>x.id===d.dataset.id);en[k]=e.target.value;queue();if(k==="name")d.querySelector(".nm").textContent=en.name||"Sans nom";if(k==="type")d.querySelector(".ty").textContent=en.type;renderMentions()};
 $("entries").onclick=e=>{const id=e.target.dataset.del;if(!id)return;arm(e.target,"e"+id,()=>{const b=P().bible;b.splice(b.findIndex(x=>x.id===id),1);save();renderBible()},"Supprimer")};
 $("filters").onclick=e=>{const f=e.target.dataset.f;if(!f)return;filter=f;document.querySelectorAll("#filters button").forEach(b=>b.classList.toggle("on",b.dataset.f===f));renderBible()};
@@ -248,6 +273,43 @@ $("importJson").onchange = async e => {
     toast("Fichier illisible : " + err.message);
   }
 };
+
+// ---------- chansons ----------
+
+$("songKey").innerHTML=`<option value="">Tonalité</option>`+KEYS.map(([v,l])=>`<option value="${v}">${l}</option>`).join("");
+$("songMeter").innerHTML=`<option value="">Mesure</option>`+METERS.map(m=>`<option>${m}</option>`).join("");
+$("songKey").onchange=e=>{Sc().key=e.target.value;save()};
+$("songMeter").onchange=e=>{Sc().meter=e.target.value;save()};
+$("songTempo").oninput=e=>{Sc().tempo=e.target.value;queue()};
+$("songNotes").oninput=e=>{Sc().notes=e.target.value;queue()};
+
+// Boutons d'insertion de section. Ils ne prennent pas le focus, pour garder le curseur
+// (et le clavier ouvert sur iPhone).
+$("sectionTools").innerHTML=SECTIONS.map(n=>`<button class="btn" data-sec="${n}">+ ${n}</button>`).join("");
+$("sectionTools").addEventListener("pointerdown",e=>{if(e.target.dataset.sec)e.preventDefault()});
+$("sectionTools").onclick=e=>{
+  const name=e.target.dataset.sec;if(!name)return;
+  insertSection($("sceneText"),name);
+};
+function sectionHeading(text,name){
+  if(name!=="Couplet")return `## ${name}`;
+  const n=(text.match(/^##\s*Couplet\b/gim)||[]).length;
+  return `## Couplet ${n+1}`;
+}
+function insertSection(ta,name){
+  const focused=document.activeElement===ta;
+  const pos=focused?ta.selectionStart:ta.value.length;
+  const before=ta.value.slice(0,pos);
+  const sep=!before||before.endsWith("\n\n")?"":before.endsWith("\n")?"\n":"\n\n";
+  const insert=`${sep}${sectionHeading(ta.value,name)}\n`;
+  ta.focus();
+  if(!focused)ta.setSelectionRange(pos,pos);
+  // execCommand garde l'annulation (Cmd+Z) ; repli si indisponible.
+  if(!document.execCommand?.("insertText",false,insert)){
+    ta.setRangeText(insert,ta.selectionStart,ta.selectionEnd,"end");
+    ta.dispatchEvent(new Event("input",{bubbles:true}));
+  }
+}
 
 // ---------- menu ----------
 

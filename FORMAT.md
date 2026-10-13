@@ -62,3 +62,41 @@ Notes libres.
 - **L'`id`** identifie la scène ou la fiche de façon durable. Il servira aux liens entre fiches et à la synchronisation. S'il manque, l'application en crée un.
 - **Le compte de mots** n'est pas stocké : il est recalculé à partir du texte.
 - Ce qui n'est pas reconnu est ignoré sans erreur (autres fichiers, dossier `bible/` inconnu, statut invalide remplacé par `idee`).
+
+## Projets de chansons
+
+Un projet de chansons (un recueil ou un album) suit la même logique, avec ses propres dossiers :
+
+```
+premier-album/
+  projet.md                  type: chansons, ordre des chansons
+  chansons/
+    ville-sous-la-pluie.md   une chanson par fichier
+  idees/
+    titres/  phrases/  images/  themes/   la banque d'idées, une idée par fichier
+```
+
+**`projet.md`** porte `type: chansons` ; la liste d'ordre s'appelle `chansons` au lieu de `scenes`.
+
+**Chanson** (`chansons/*.md`) : tonalité en notation anglaise (`Am`, `F#`, `Bb`…), tempo en BPM, mesure, notes sur plusieurs lignes. Les champs vides sont omis. Les sections sont des titres Markdown `##`.
+```markdown
+---
+id: c8f2c1d0
+titre: Ville sous la pluie
+statut: brouillon
+tonalite: Am
+tempo: "92"
+mesure: "4/4"
+notes: |-
+  Réf : Bashung.
+  Guitare sèche.
+---
+
+## Couplet 1
+Il pleut sur la ville
+
+## Refrain
+Et je reste là
+```
+
+Pour une chanson, le statut `revise` s'affiche « Finie ».

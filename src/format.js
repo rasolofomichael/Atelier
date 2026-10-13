@@ -40,7 +40,8 @@ export function countWords(text) {
 }
 
 // ---------- front matter (sous-ensemble de YAML) ----------
-// Valeurs prises en charge : chaînes et listes de chaînes.
+// Valeurs prises en charge : chaînes (y compris sur plusieurs lignes, « key: | »)
+// et listes de chaînes.
 
 const RESERVED = /^(true|false|yes|no|on|off|null|~)$/i;
 
@@ -60,6 +61,12 @@ function yamlScalar(raw) {
   return s.replace(/\s+#.*$/, '');
 }
 
+// Texte sur plusieurs lignes écrit en bloc lisible, sauf cas limites (alors entre guillemets).
+function isBlock(value) {
+  const v = String(value);
+  return v.includes('\n') && !/^\s/.test(v) && !/\n\s*\n$/.test(v) && !/\n\s+$/.test(v.replace(/\n$/, ''));
+}
+
 export function stringifyFrontMatter(data) {
   const lines = [];
   for (const [key, value] of Object.entries(data)) {
@@ -68,6 +75,10 @@ export function stringifyFrontMatter(data) {
       if (!value.length) { lines.push(`${key}: []`); continue; }
       lines.push(`${key}:`);
       for (const item of value) lines.push(`  - ${yamlString(item)}`);
+    } else if (isBlock(value)) {
+      const v = String(value);
+      lines.push(`${key}: ${v.endsWith('\n') ? '|' : '|-'}`);
+      for (const l of (v.endsWith('\n') ? v.slice(0, -1) : v).split('\n')) lines.push(l ? `  ${l}` : '');
     } else {
       lines.push(`${key}: ${yamlString(value)}`);
     }
@@ -78,7 +89,18 @@ export function stringifyFrontMatter(data) {
 export function parseFrontMatter(yaml) {
   const data = {};
   let listKey = null;
+  let block = null;   // { key, keep, lines }
+  const endBlock = () => {
+    if (!block) return;
+    const text = block.lines.join('\n').replace(/\n+$/, '');
+    data[block.key] = block.keep && text ? text + '\n' : text;
+    block = null;
+  };
   for (const line of yaml.split('\n')) {
+    if (block) {
+      if (line === '' || /^ {2}/.test(line) || !line.trim()) { block.lines.push(line.slice(2)); continue; }
+      endBlock();
+    }
     if (!line.trim() || line.trim().startsWith('#')) continue;
     const item = line.match(/^\s+-\s?(.*)$/);
     if (item && listKey) { data[listKey].push(yamlScalar(item[1])); continue; }
@@ -87,11 +109,13 @@ export function parseFrontMatter(yaml) {
     const [, key, rest] = kv;
     if (rest === '') { data[key] = []; listKey = key; continue; }
     listKey = null;
+    if (/^\|-?\s*$/.test(rest)) { block = { key, keep: !rest.trim().endsWith('-'), lines: [] }; continue; }
     const inline = rest.trim().match(/^\[(.*)\]$/);
     data[key] = inline
       ? inline[1].split(',').map(yamlScalar).filter(v => v !== '')
       : yamlScalar(rest);
   }
+  endBlock();
   return data;
 }
 
@@ -109,34 +133,53 @@ export function parseDoc(text) {
   return { data: parseFrontMatter(m[1]), body };
 }
 
-// ---------- scènes et fiches ----------
+// ---------- éléments et fiches ----------
 // En mémoire, l'app garde le modèle du prototype :
-//   scène  { id, title, status, text }
-//   fiche  { id, type: 'Personnage'|'Lieu'|'Lore', name, alias: 'a, b', notes }
+//   élément { id, title, status, text }  (+ pour une chanson : key, tempo, meter, notes)
+//   fiche   { id, type, name, alias: 'a, b', notes }
+// Un projet a un type (`kind`) : 'fiction' (par défaut) ou 'chansons'.
 // Dans les fichiers, les clés sont en français et les alias forment une liste.
 // `file` (nom sans .md) mémorise le nom de fichier pour ne pas le changer
 // quand le titre change (historique git propre).
 
-export const BIBLE_DIRS = { Personnage: 'personnages', Lieu: 'lieux', Lore: 'lore' };
-const DIR_TO_TYPE = Object.fromEntries(Object.entries(BIBLE_DIRS).map(([t, d]) => [d, t]));
+export const LAYOUTS = {
+  fiction: {
+    items: 'scenes', bank: 'bible', fallback: 'Lore',
+    dirs: { Personnage: 'personnages', Lieu: 'lieux', Lore: 'lore' },
+  },
+  chansons: {
+    items: 'chansons', bank: 'idees', fallback: 'Phrase',
+    dirs: { Titre: 'titres', Phrase: 'phrases', Image: 'images', 'Thème': 'themes' },
+  },
+};
+export const BIBLE_DIRS = LAYOUTS.fiction.dirs;
+const layoutOf = kind => LAYOUTS[kind] ?? LAYOUTS.fiction;
+
+// Champs propres aux chansons : clé en mémoire -> clé dans le fichier.
+const SONG_FIELDS = { key: 'tonalite', tempo: 'tempo', meter: 'mesure', notes: 'notes' };
 
 const splitAlias = alias => String(alias ?? '').split(',').map(a => a.trim()).filter(Boolean);
 
-export function sceneToMarkdown(scene) {
-  return stringifyDoc(
-    { id: scene.id, titre: scene.title ?? '', statut: normalizeStatut(scene.status) },
-    scene.text,
-  );
+export function sceneToMarkdown(scene, kind = 'fiction') {
+  const data = { id: scene.id, titre: scene.title ?? '', statut: normalizeStatut(scene.status) };
+  if (kind === 'chansons') {
+    for (const [k, f] of Object.entries(SONG_FIELDS)) if (scene[k]) data[f] = String(scene[k]);
+  }
+  return stringifyDoc(data, scene.text);
 }
 
-export function markdownToScene(text, fallbackTitle = '') {
+export function markdownToScene(text, fallbackTitle = '', kind = 'fiction') {
   const { data, body } = parseDoc(text);
-  return {
+  const scene = {
     id: data.id || newId(),
     title: data.titre ?? fallbackTitle,
     status: normalizeStatut(data.statut),
     text: body,
   };
+  if (kind === 'chansons') {
+    for (const [k, f] of Object.entries(SONG_FIELDS)) scene[k] = typeof data[f] === 'string' ? data[f] : '';
+  }
+  return scene;
 }
 
 export function ficheToMarkdown(fiche) {
@@ -159,27 +202,29 @@ export function markdownToFiche(text, type, fallbackName = '') {
 }
 
 // ---------- projet complet ----------
-// Projet : { id, name, description?, sceneId?, scenes: [...], bible: [...] }
+// Projet : { id, name, kind?, description?, sceneId?, scenes: [...], bible: [...] }
 
 export function projectToFiles(project) {
+  const kind = project.kind === 'chansons' ? 'chansons' : 'fiction';
+  const L = layoutOf(kind);
   const files = new Map();
   const sceneNames = new Set();
   const order = [];
   for (const scene of project.scenes ?? []) {
     const name = uniqueName(scene.file || slugify(scene.title), sceneNames);
     order.push(name);
-    files.set(`scenes/${name}.md`, sceneToMarkdown(scene));
+    files.set(`${L.items}/${name}.md`, sceneToMarkdown(scene, kind));
   }
-  const ficheNames = Object.fromEntries(Object.values(BIBLE_DIRS).map(d => [d, new Set()]));
+  const ficheNames = Object.fromEntries(Object.values(L.dirs).map(d => [d, new Set()]));
   for (const fiche of project.bible ?? []) {
-    const dir = BIBLE_DIRS[fiche.type] ?? 'lore';
+    const dir = L.dirs[fiche.type] ?? L.dirs[L.fallback];
     const name = uniqueName(fiche.file || slugify(fiche.name), ficheNames[dir]);
-    files.set(`bible/${dir}/${name}.md`, ficheToMarkdown(fiche));
+    files.set(`${L.bank}/${dir}/${name}.md`, ficheToMarkdown(fiche));
   }
-  files.set('projet.md', stringifyDoc(
-    { id: project.id, titre: project.name ?? '', scenes: order },
-    project.description,
-  ));
+  const meta = { id: project.id, titre: project.name ?? '' };
+  if (kind === 'chansons') meta.type = 'chansons';
+  meta[L.items] = order;
+  files.set('projet.md', stringifyDoc(meta, project.description));
   return files;
 }
 
@@ -190,6 +235,8 @@ export function filesToProject(files) {
   const byPath = new Map(entries.map(([p, c]) => [p.replace(/\\/g, '/').replace(/^\.?\//, ''), c]));
 
   const { data: meta, body: description } = parseDoc(byPath.get('projet.md') ?? '');
+  const kind = String(meta.type ?? '').toLowerCase() === 'chansons' ? 'chansons' : 'fiction';
+  const L = layoutOf(kind);
   const project = {
     id: meta.id || newId(),
     name: meta.titre ?? '',
@@ -197,25 +244,29 @@ export function filesToProject(files) {
     scenes: [],
     bible: [],
   };
+  if (kind === 'chansons') project.kind = 'chansons';
 
   const sceneFiles = new Map();
+  const itemRe = new RegExp(`^${L.items}/([^/]+)\\.md$`, 'i');
   for (const [path, content] of byPath) {
-    const m = path.match(/^scenes\/([^/]+)\.md$/i);
+    const m = path.match(itemRe);
     if (m) sceneFiles.set(m[1], content);
   }
-  const listed = (Array.isArray(meta.scenes) ? meta.scenes : []).map(s => String(s).replace(/\.md$/i, ''));
-  // Ordre de projet.md, puis les scènes absentes de la liste, par nom de fichier.
+  const listed = (Array.isArray(meta[L.items]) ? meta[L.items] : []).map(s => String(s).replace(/\.md$/i, ''));
+  // Ordre de projet.md, puis les éléments absents de la liste, par nom de fichier.
   const names = [...new Set(listed.filter(n => sceneFiles.has(n)))];
   const rest = [...sceneFiles.keys()].filter(n => !names.includes(n)).sort();
   for (const name of [...names, ...rest]) {
-    project.scenes.push({ ...markdownToScene(sceneFiles.get(name), name), file: name });
+    project.scenes.push({ ...markdownToScene(sceneFiles.get(name), name, kind), file: name });
   }
   project.sceneId = project.scenes[0]?.id;
 
-  const fichePaths = [...byPath.keys()].filter(p => /^bible\/[^/]+\/[^/]+\.md$/i.test(p)).sort();
+  const dirToType = Object.fromEntries(Object.entries(L.dirs).map(([t, d]) => [d, t]));
+  const bankRe = new RegExp(`^${L.bank}/[^/]+/[^/]+\\.md$`, 'i');
+  const fichePaths = [...byPath.keys()].filter(p => bankRe.test(p)).sort();
   for (const path of fichePaths) {
     const [, dir, file] = path.split('/');
-    const type = DIR_TO_TYPE[dir.toLowerCase()];
+    const type = dirToType[dir.toLowerCase()];
     if (!type) continue;
     const name = file.replace(/\.md$/i, '');
     project.bible.push({ ...markdownToFiche(byPath.get(path), type, name), file: name });

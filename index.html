@@ -67,6 +67,10 @@
         <select id="songKey" aria-label="Tonalité"></select>
         <label class="tempo"><input id="songTempo" type="number" inputmode="numeric" min="20" max="300" placeholder="Tempo" aria-label="Tempo en BPM"> BPM</label>
         <select id="songMeter" aria-label="Mesure"></select>
+        <select id="songStyle" aria-label="Style">
+          <option value="pop">Pop</option>
+          <option value="chanson">Chanson française</option>
+        </select>
       </div>
       <div class="tools">
         <button class="btn" id="upBtn">↑ Monter</button>
@@ -74,7 +78,10 @@
         <button class="btn" id="delScene">Supprimer la scène</button>
       </div>
       <div class="tools sections" id="sectionTools" hidden aria-label="Insérer une section"></div>
-      <textarea id="sceneText" aria-label="Texte de la scène" placeholder="Écris ici…"></textarea>
+      <div class="editor" id="editor">
+        <div class="mirror" id="mirror" aria-hidden="true"></div>
+        <textarea id="sceneText" aria-label="Texte" placeholder="Écris ici…"></textarea>
+      </div>
       <div class="status"><span id="wc">0 mot</span><span id="saved">Enregistré</span></div>
       <details class="songnotes" id="songNotesBox" hidden>
         <summary>Notes et références</summary>

@@ -107,8 +107,8 @@ test('projet de chansons : fichiers et aller-retour', () => {
     id: 'r1', name: 'Premier album', kind: 'chansons', description: '',
     scenes: [
       { id: 'c1', title: 'Ville sous la pluie', status: 'brouillon', text: '## Couplet 1\nIl pleut sur la ville\n\n## Refrain\nEt je reste là\n',
-        key: 'Am', tempo: '92', meter: '4/4', notes: 'Réf : Bashung.\nGuitare sèche.' },
-      { id: 'c2', title: 'Sans tonalité', status: 'idee', text: '', key: '', tempo: '', meter: '', notes: '' },
+        style: 'chanson', key: 'Am', tempo: '92', meter: '4/4', notes: 'Réf : Bashung.\nGuitare sèche.' },
+      { id: 'c2', title: 'Sans tonalité', status: 'idee', text: '', style: '', key: '', tempo: '', meter: '', notes: '' },
     ],
     bible: [
       { id: 'i1', type: 'Titre', name: 'Les heures creuses', alias: '', notes: '' },
@@ -121,7 +121,7 @@ test('projet de chansons : fichiers et aller-retour', () => {
     'idees/themes/le-depart.md', 'idees/titres/les-heures-creuses.md', 'projet.md',
   ]);
   assert.equal(files.get('chansons/ville-sous-la-pluie.md'),
-    '---\nid: c1\ntitre: Ville sous la pluie\nstatut: brouillon\ntonalite: Am\ntempo: "92"\nmesure: "4/4"\nnotes: |-\n  Réf : Bashung.\n  Guitare sèche.\n---\n\n## Couplet 1\nIl pleut sur la ville\n\n## Refrain\nEt je reste là\n');
+    '---\nid: c1\ntitre: Ville sous la pluie\nstatut: brouillon\nstyle: chanson\ntonalite: Am\ntempo: "92"\nmesure: "4/4"\nnotes: |-\n  Réf : Bashung.\n  Guitare sèche.\n---\n\n## Couplet 1\nIl pleut sur la ville\n\n## Refrain\nEt je reste là\n');
   assert.match(files.get('projet.md'), /type: chansons\nchansons:\n  - ville-sous-la-pluie/);
   const back = filesToProject(files);
   assert.equal(back.kind, 'chansons');

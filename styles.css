@@ -52,8 +52,14 @@ main{display:flex;justify-content:center;padding:24px 16px}
 #sceneStatus{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:4px 6px;font-size:.8rem}
 .tools{display:flex;gap:6px;flex-wrap:wrap}
 .tools .btn{font-size:.75rem;padding:4px 8px}
-#sceneText{flex:1;min-height:55vh;font-family:var(--body);font-size:1.12rem;line-height:1.75;border:none;background:var(--paper);border-radius:4px;padding:28px clamp(16px,5vw,48px);resize:none;box-shadow:0 1px 0 var(--line)}
-#sceneText:focus{outline:none;box-shadow:0 0 0 1px var(--line)}
+/* Éditeur : la zone de texte est posée sur un calque (miroir) qui reproduit exactement
+   ses lignes, pour afficher syllabes et rimes en dessous du texte. */
+.editor{position:relative;flex:1;min-height:55vh;display:flex;background:var(--paper);border-radius:4px;box-shadow:0 1px 0 var(--line)}
+.editor:focus-within{box-shadow:0 0 0 1px var(--line)}
+#sceneText,.mirror{font-family:var(--body);font-size:1.12rem;line-height:1.75;padding:28px clamp(16px,5vw,48px);white-space:pre-wrap;overflow-wrap:break-word;word-break:normal;letter-spacing:normal;tab-size:4;margin:0;border:0}
+#sceneText{flex:1;position:relative;z-index:1;background:transparent;resize:none}
+#sceneText:focus{outline:none}
+.mirror{position:absolute;inset:0;overflow:hidden;color:transparent;pointer-events:none;display:none}
 .status{font-family:var(--mono);font-size:.72rem;color:var(--muted);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
 .chip{font-size:.75rem;padding:3px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent);border:none}
@@ -87,7 +93,8 @@ body.focus .app{grid-template-columns:1fr}
   .app[data-tab="scenes"] main,.app[data-tab="scenes"] .bible,
   .app[data-tab="bible"] main,.app[data-tab="bible"] .rail{display:none}
   #sceneTitle{font-size:1.5rem}
-  #sceneText{min-height:60vh;font-size:1.05rem}
+  .editor{min-height:60vh}
+  #sceneText,.mirror{font-size:1.05rem}
   main{padding:16px}
   body.focus .tabs{display:none}
 }
@@ -130,3 +137,21 @@ main{padding-bottom:max(16px,env(safe-area-inset-bottom))}
 .sections .btn{border-style:dashed}
 .songnotes summary{cursor:pointer;font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
 .songnotes textarea{width:100%;min-height:120px;margin-top:8px;background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:10px;font-family:var(--body);font-size:.95rem;line-height:1.5;resize:vertical}
+/* Syllabes et rimes */
+:root{--r0:#fde2a7;--r1:#c9e8d4;--r2:#d5dcfb;--r3:#f8cfd8;--r4:#d9ecf6;--r5:#eadcf7;--r6:#f6dcc8;--r7:#dfe8c4;--warn:#b0541b}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--r0:#5a4618;--r1:#21483a;--r2:#2c3766;--r3:#5c2a38;--r4:#1f4457;--r5:#43305e;--r6:#5a3a22;--r7:#3d4a1f;--warn:#f0a36b}}
+:root[data-theme="dark"]{--r0:#5a4618;--r1:#21483a;--r2:#2c3766;--r3:#5c2a38;--r4:#1f4457;--r5:#43305e;--r6:#5a3a22;--r7:#3d4a1f;--warn:#f0a36b}
+.editor.analyse .mirror{display:block}
+.editor.analyse #sceneText,.editor.analyse .mirror{padding-right:calc(clamp(16px,5vw,48px) + 2.8em)}
+.editor.analyse #sceneText{scrollbar-width:none}
+.editor.analyse #sceneText::-webkit-scrollbar{display:none}
+.ml{position:relative}
+.ml mark{color:transparent;border-radius:3px;padding:0 1px;margin:0 -1px}
+.r0{background:var(--r0)}.r1{background:var(--r1)}.r2{background:var(--r2)}.r3{background:var(--r3)}
+.r4{background:var(--r4)}.r5{background:var(--r5)}.r6{background:var(--r6)}.r7{background:var(--r7)}
+.ml.h .hh{border-bottom:2px solid var(--accent-soft)}
+.cnt{position:absolute;left:100%;top:0;margin-left:.5em;white-space:nowrap;color:var(--muted);font-family:var(--mono)}
+.cnt small{font-size:.6em;vertical-align:.15em}
+.cnt.off{color:var(--warn)}
+.ml.h .cnt{color:var(--accent);letter-spacing:.06em}
+#analyseBtn[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);border-color:var(--accent-soft);border-style:solid}

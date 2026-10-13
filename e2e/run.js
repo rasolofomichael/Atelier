@@ -292,3 +292,52 @@ test('recueil de chansons : création, infos, sections, banque d\'idées', async
   assert.deepEqual(errors, []);
   await ctx.close();
 });
+
+test('syllabes et rimes : affichage aligné sur le texte, styles, désactivation', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const { page, errors } = await open(ctx);
+  // Fiction : pas d'analyse.
+  assert.ok(await page.isHidden('#mirror'));
+  await page.click('#menuBtn');
+  await page.click('#newSongs');
+  await page.keyboard.press('Enter');
+  const text = [
+    '## Couplet 1',
+    'La petite fille',
+    'Marche dans la ville',
+    'Elle pense à toi',
+    'Et rêve à ta voix',
+    '',
+    '## Couplet 2',
+    'Une très longue ligne qui ne tient pas sur la largeur d\'un téléphone tranquille',
+    'Je reste là',
+  ].join('\n');
+  await page.fill('#sceneText', text);
+  const counts = () => page.locator('#mirror .ml:not(.h) .cnt').allTextContents();
+  assert.deepEqual(await counts(), ['4', '4', '4', '5', '18/4', '3/4']);
+  assert.deepEqual(await page.locator('#mirror .ml.h .cnt').allTextContents(), ['AABB', 'AB']);
+  assert.equal(await page.locator('#mirror mark').count(), 6);   // fille, ville, tranquille ; toi, voix, là (assonance en pop)
+
+  // Le calque a exactement la hauteur du texte (même découpage des lignes).
+  const heights = await page.evaluate(() => [document.getElementById('mirror').scrollHeight, document.getElementById('sceneText').scrollHeight]);
+  assert.equal(heights[0], heights[1]);
+  // Chaque compte est à la hauteur de sa ligne : la ligne longue occupe plusieurs lignes visuelles.
+  const tops = await page.locator('#mirror .ml').evaluateAll(els => els.map(e => e.offsetTop));
+  const lh = tops[2] - tops[1];
+  assert.ok(tops[8] - tops[7] >= 2 * lh, 'la longue ligne doit faire au moins deux lignes');
+  await page.screenshot({ path: process.env.SHOT_DIR ? `${process.env.SHOT_DIR}/analyse.png` : undefined });
+
+  // Chanson française : le e muet compte devant une consonne.
+  await page.selectOption('#songStyle', 'chanson');
+  assert.equal((await counts())[0], '5');
+
+  // Désactivation, mémorisée.
+  await page.click('#analyseBtn');
+  assert.ok(await page.isHidden('#mirror'));
+  await page.reload();
+  await page.waitForSelector('body.ready');
+  assert.ok(await page.isHidden('#mirror'));
+  assert.equal(await page.inputValue('#songStyle'), 'chanson');
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});

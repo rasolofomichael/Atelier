@@ -78,12 +78,13 @@ premier-album/
 
 **`projet.md`** porte `type: chansons` ; la liste d'ordre s'appelle `chansons` au lieu de `scenes`.
 
-**Chanson** (`chansons/*.md`) : tonalité en notation anglaise (`Am`, `F#`, `Bb`…), tempo en BPM, mesure, notes sur plusieurs lignes. Les champs vides sont omis. Les sections sont des titres Markdown `##`.
+**Chanson** (`chansons/*.md`) : style (`pop` ou `chanson`, qui règle le compte des syllabes et des rimes), tonalité en notation anglaise (`Am`, `F#`, `Bb`…), tempo en BPM, mesure, notes sur plusieurs lignes. Les champs vides sont omis. Les sections sont des titres Markdown `##`.
 ```markdown
 ---
 id: c8f2c1d0
 titre: Ville sous la pluie
 statut: brouillon
+style: chanson
 tonalite: Am
 tempo: "92"
 mesure: "4/4"

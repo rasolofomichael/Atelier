@@ -4,6 +4,7 @@ import {
 import { workspaceToFiles } from './format.js';
 import { createZip } from './zip.js';
 import { kindOf, fmtWords, KEYS, METERS, SECTIONS } from './kinds.js';
+import { analyzeLyrics } from './lyrics.js';
 
 const SAVE_DELAY = 400;                 // ms après la dernière frappe
 const BACKUP_EVERY = 10 * 60 * 1000;    // une copie de secours au plus toutes les 10 min
@@ -116,10 +117,11 @@ function renderEditor(){
   $("sceneStatus").value=s.status;
   $("wc").textContent=fmt(words(s.text));
   if(K().songs){
-    $("songKey").value=s.key||"";$("songMeter").value=s.meter||"";
+    $("songKey").value=s.key||"";$("songMeter").value=s.meter||"";$("songStyle").value=s.style||"pop";
     if(document.activeElement!==$("songTempo"))$("songTempo").value=s.tempo||"";
     if(document.activeElement!==$("songNotes"))$("songNotes").value=s.notes||"";
   }
+  renderAnalysis();
 }
 // Libellés et champs qui dépendent du type de projet.
 function renderKind(){
@@ -132,6 +134,8 @@ function renderKind(){
   [...$("sceneStatus").options].forEach(o=>o.textContent=k.statuses[o.value]);
   document.querySelectorAll(".legend span").forEach((el,i)=>el.lastChild.textContent=Object.values(k.statuses)[i]);
   $("songMeta").hidden=$("sectionTools").hidden=$("songNotesBox").hidden=!songs;
+  $("editor").classList.toggle("analyse",songs&&analyseOn);
+  $("analyseBtn").setAttribute("aria-pressed",String(analyseOn));
   if(!k.types.some(([t])=>t===filter))filter="all";
   $("filters").innerHTML=[["all","Tout"],...k.types].map(([f,l])=>`<button data-f="${esc(f)}"${f===filter?' class="on"':""}>${esc(l)}</button>`).join("");
 }
@@ -163,10 +167,10 @@ function all(){renderProjects();renderKind();renderScenes();renderEditor();rende
 
 $("sceneList").onclick=e=>{const b=e.target.closest(".scene");if(!b)return;P().sceneId=b.dataset.id;save();renderScenes();$("sceneTitle").blur();$("sceneText").blur();renderEditor();renderMentions();setTab("ecrire")};
 $("sceneTitle").oninput=e=>{Sc().title=e.target.value;queue();renderScenes();renderMentions()};
-$("sceneText").oninput=e=>{Sc().text=e.target.value;queue();$("wc").textContent=fmt(words(e.target.value));renderScenes();renderMentions()};
+$("sceneText").oninput=e=>{Sc().text=e.target.value;queue();$("wc").textContent=fmt(words(e.target.value));renderAnalysis();renderScenes();renderMentions()};
 $("sceneStatus").onchange=e=>{Sc().status=e.target.value;save();renderScenes()};
-function newItem(kind,title){const s={id:uid(),title,status:"idee",text:kind.template};if(kind.songs)Object.assign(s,{key:"",tempo:"",meter:"",notes:""});return s}
-$("addScene").onclick=()=>{const p=P(),s=newItem(K(),K().newItem);const i=p.scenes.indexOf(Sc());p.scenes.splice(i+1,0,s);p.sceneId=s.id;save();renderScenes();renderEditor();renderMentions();setTab("ecrire");$("sceneTitle").select()};
+function newItem(kind,title,style="pop"){const s={id:uid(),title,status:"idee",text:kind.template};if(kind.songs)Object.assign(s,{style,key:"",tempo:"",meter:"",notes:""});return s}
+$("addScene").onclick=()=>{const p=P(),s=newItem(K(),K().newItem,Sc()?.style||"pop");const i=p.scenes.indexOf(Sc());p.scenes.splice(i+1,0,s);p.sceneId=s.id;save();renderScenes();renderEditor();renderMentions();setTab("ecrire");$("sceneTitle").select()};
 function move(d){const p=P(),i=p.scenes.indexOf(Sc()),j=i+d;if(j<0||j>=p.scenes.length)return;[p.scenes[i],p.scenes[j]]=[p.scenes[j],p.scenes[i]];save();renderScenes()}
 $("upBtn").onclick=()=>move(-1);$("downBtn").onclick=()=>move(1);
 let armed=null;
@@ -280,14 +284,21 @@ $("songKey").innerHTML=`<option value="">Tonalité</option>`+KEYS.map(([v,l])=>`
 $("songMeter").innerHTML=`<option value="">Mesure</option>`+METERS.map(m=>`<option>${m}</option>`).join("");
 $("songKey").onchange=e=>{Sc().key=e.target.value;save()};
 $("songMeter").onchange=e=>{Sc().meter=e.target.value;save()};
+$("songStyle").onchange=e=>{Sc().style=e.target.value;save();renderAnalysis()};
 $("songTempo").oninput=e=>{Sc().tempo=e.target.value;queue()};
 $("songNotes").oninput=e=>{Sc().notes=e.target.value;queue()};
 
 // Boutons d'insertion de section. Ils ne prennent pas le focus, pour garder le curseur
 // (et le clavier ouvert sur iPhone).
-$("sectionTools").innerHTML=SECTIONS.map(n=>`<button class="btn" data-sec="${n}">+ ${n}</button>`).join("");
+$("sectionTools").innerHTML=SECTIONS.map(n=>`<button class="btn" data-sec="${n}">+ ${n}</button>`).join("")
+  +`<button class="btn" id="analyseBtn" aria-pressed="true" title="Afficher les syllabes et les rimes">Syllabes et rimes</button>`;
 $("sectionTools").addEventListener("pointerdown",e=>{if(e.target.dataset.sec)e.preventDefault()});
 $("sectionTools").onclick=e=>{
+  if(e.target.id==="analyseBtn"){
+    analyseOn=!analyseOn;
+    try{localStorage.setItem("atelier-analyse",analyseOn?"1":"0")}catch{}
+    renderKind();renderAnalysis();return;
+  }
   const name=e.target.dataset.sec;if(!name)return;
   insertSection($("sceneText"),name);
 };
@@ -310,6 +321,36 @@ function insertSection(ta,name){
     ta.dispatchEvent(new Event("input",{bubbles:true}));
   }
 }
+
+// ---------- syllabes et rimes ----------
+// Le calque #mirror reproduit le texte ligne à ligne (même police, même largeur),
+// en transparent : seuls les surlignages de rimes et les comptes en marge sont visibles.
+
+let analyseOn=true;
+try{analyseOn=localStorage.getItem("atelier-analyse")!=="0"}catch{}
+
+function renderAnalysis(){
+  const ed=$("editor");
+  if(!ed.classList.contains("analyse"))return;
+  const s=Sc(),text=$("sceneText").value;
+  const rows=analyzeLyrics(text,s.style||"pop");
+  const lines=text.split("\n");
+  $("mirror").innerHTML=lines.map((line,i)=>{
+    const r=rows[i];
+    if(r.kind==="heading")return `<div class="ml h"><span class="hh">${esc(line)}</span>${r.schema?`<span class="cnt"><small>${r.schema}</small></span>`:""}</div>`;
+    if(r.kind!=="lyric")return `<div class="ml">${esc(line)||"\u200b"}</div>`;
+    let html=esc(line);
+    if(r.group!=null&&r.rhyme){
+      // Surligne la dernière occurrence du mot qui porte la rime.
+      const at=line.toLowerCase().lastIndexOf(r.rhyme.word);
+      if(at>=0)html=esc(line.slice(0,at))+`<mark class="r${r.group%8}">${esc(line.slice(at,at+r.rhyme.word.length))}</mark>`+esc(line.slice(at+r.rhyme.word.length));
+    }
+    const off=r.ref!=null&&r.ref!==r.syllables;
+    return `<div class="ml">${html}<span class="cnt${off?" off":""}"><small>${r.syllables}${off?`/${r.ref}`:""}</small></span></div>`;
+  }).join("");
+  $("mirror").scrollTop=$("sceneText").scrollTop;
+}
+$("sceneText").addEventListener("scroll",()=>{$("mirror").scrollTop=$("sceneText").scrollTop});
 
 // ---------- menu ----------
 

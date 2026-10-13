@@ -156,7 +156,7 @@ export const BIBLE_DIRS = LAYOUTS.fiction.dirs;
 const layoutOf = kind => LAYOUTS[kind] ?? LAYOUTS.fiction;
 
 // Champs propres aux chansons : clé en mémoire -> clé dans le fichier.
-const SONG_FIELDS = { key: 'tonalite', tempo: 'tempo', meter: 'mesure', notes: 'notes' };
+const SONG_FIELDS = { style: 'style', key: 'tonalite', tempo: 'tempo', meter: 'mesure', notes: 'notes' };
 
 const splitAlias = alias => String(alias ?? '').split(',').map(a => a.trim()).filter(Boolean);
 

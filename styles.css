@@ -178,7 +178,8 @@ body:not(.ready) .app{visibility:hidden}
 
 .accessory{display:flex;align-items:center;gap:8px;padding:10px max(16px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));background:var(--sheet);border-top:1px solid var(--line)}
 .accessory .pill{height:40px;padding:0 16px}
-.accessory .status{font-family:var(--mono);font-size:.7rem;color:var(--faint);white-space:nowrap}
+.accessory .status{display:flex;flex-direction:column;align-items:flex-end;gap:2px;font-family:var(--mono);font-size:.68rem;color:var(--faint);white-space:nowrap}
+.accessory .round{background:var(--soft);color:var(--ink)}
 .ecrire:not(.songs) .song-only{display:none}
 /* Clavier ouvert sur iPhone : la barre reste collée au-dessus du clavier. */
 .accessory.kb{position:fixed;left:0;right:0;bottom:0;z-index:5;transform:translateY(calc(-1 * var(--kb,0px)));padding-bottom:10px}

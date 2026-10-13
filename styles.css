@@ -275,6 +275,8 @@ body.focus #focusBtn{background:var(--ink);color:var(--sheet)}
 body[data-universe="roman"]{
   --bg:#f6f1e7; --sheet:#fffcf5; --ink:#2a2620; --muted:#8b8070; --faint:#a89c88; --line:#e6dcc8; --soft:#ece4d4; --pill-line:#cbbfa8;
   --gold:#8a6d3b; --display:"Fraunces",Georgia,serif;
+  /* Titres en Fraunces ; texte et interface en Montserrat, plus moderne. */
+  --ui:"Montserrat",system-ui,sans-serif; --body:"Montserrat",system-ui,sans-serif;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) body[data-universe="roman"]{
   --bg:#1c1a16; --sheet:#24211c; --ink:#ece4d4; --muted:#a89c88; --faint:#7d7466; --line:#3a352c; --soft:#2e2a23; --pill-line:#4a443a; --gold:#d1b27a}}
@@ -295,9 +297,9 @@ body[data-universe="roman"]{
 .toc-list::before{content:"Table des matières";display:block;font-size:.7rem;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
 .toc{display:grid;grid-template-columns:2.4rem minmax(0,1fr) auto;align-items:baseline;gap:4px;width:100%;padding:13px 10px;margin:0 -10px;width:calc(100% + 20px);border:none;border-bottom:1px solid var(--line);border-radius:6px;background:none;text-align:left;color:var(--ink)}
 .toc.on{background:color-mix(in srgb,var(--gold) 13%,transparent)}
-.toc .num{font-family:var(--display);color:var(--muted);font-size:.95rem}
+.toc .num{color:var(--muted);font-size:.85rem;font-weight:600}
 .toc .tt{display:flex;align-items:baseline;gap:6px;min-width:0}
-.toc .t{font-family:var(--body);font-size:1.05rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.toc .t{font-family:var(--body);font-size:.98rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .toc.on .t{font-style:italic}
 .toc .leader{flex:1;min-width:12px;border-bottom:1.5px dotted var(--pill-line);transform:translateY(-4px)}
 .toc .n{font-size:.75rem;color:var(--muted);white-space:nowrap}
@@ -318,7 +320,7 @@ body[data-universe="roman"]{
 .ecrire.novel #sceneTitle{text-align:center;font-family:var(--display);font-style:italic;font-weight:400;font-size:30px;letter-spacing:0}
 .ecrire.novel .facts{display:none}
 .ecrire.novel .paper{background:var(--bg);border-radius:0}
-.ecrire.novel #sceneText,.ecrire.novel .mirror{text-align:justify;hyphens:auto;-webkit-hyphens:auto;padding-left:30px;padding-right:30px}
+.ecrire.novel #sceneText,.ecrire.novel .mirror{font-size:1rem;line-height:1.8;padding-left:30px;padding-right:30px}
 .ecrire.novel .accessory{background:var(--bg);border-top-color:var(--line)}
 .ecrire.novel #wc{display:none}
 .novel-only{display:none}
@@ -335,5 +337,5 @@ body[data-universe="roman"]{
 
 /* Projets : repère d'univers */
 .project-list .u-chansons{background:#e3bd7f;color:#5a3f12}
-.project-list .u-roman{background:#ece4d4;color:#2a2620;font-family:var(--body)}
+.project-list .u-roman{background:#ece4d4;color:#2a2620;font-family:"Montserrat",system-ui,sans-serif}
 .project-list .u-roman b{font-family:"Fraunces",Georgia,serif;font-style:italic;font-weight:400;font-size:1.05rem}

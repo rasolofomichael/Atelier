@@ -1,6 +1,6 @@
 # Atelier
 
-Outil d'écriture personnel (direction visuelle « B » : couleurs douces, grands chiffres, cartes) : fiction (scènes, bible d'univers) et chansons (sections, tonalité, tempo, banque d'idées), mode focus, hors ligne.
+Outil d'écriture personnel, en univers distincts dans une même app : **chansons** (cartes de couleur ; sections, syllabes, rimes, tonalité, tempo, banque d'idées) et **roman** (« manuscrit » : table des matières, page de livre, objectifs de mots, univers). L'univers **écran** (film, série, format Fountain) est prévu. Mode focus, hors ligne.
 
 ## Lancer
 

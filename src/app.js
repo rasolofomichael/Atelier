@@ -4,7 +4,7 @@ import {
 import { workspaceToFiles } from './format.js';
 import { createZip } from './zip.js';
 import {
-  kindOf, fmtWords, METERS, SECTIONS, STYLES, PALETTE, PALETTE_LABELS, nextColor, NOTES, parseKey, makeKey, keyLabel, keyShort,
+  kindOf, kindName, roman, fmtWords, METERS, SECTIONS, STYLES, PALETTE, PALETTE_LABELS, nextColor, NOTES, parseKey, makeKey, keyLabel, keyShort,
 } from './kinds.js';
 import { analyzeLyrics } from './lyrics.js';
 
@@ -13,7 +13,7 @@ const BACKUP_EVERY = 10 * 60 * 1000;    // une copie de secours au plus toutes l
 
 const uid = () => Math.random().toString(36).slice(2, 9);
 function sample() {
-  return {current:"p1",projects:[{id:"p1",name:"Exemple · La ville sous la pluie",sceneId:"s1",
+  return {current:"p1",projects:[{id:"p1",kind:"roman",name:"Exemple · La ville sous la pluie",sceneId:"s1",
     scenes:[
       {id:"s1",title:"Ouverture : le quai",status:"brouillon",text:"Il pleuvait sur Port-Ombre depuis trois cents jours. Lia attendait au bout du quai, la lanterne éteinte à la main.\n\nQuand le bateau sans voile apparut, elle sut que le Pacte venait d'être rompu."},
       {id:"s2",title:"La maison du passeur",status:"idee",text:"Lia frappe chez Oren. Il refuse d'ouvrir."},
@@ -117,7 +117,27 @@ function ensureColors() {
   }
   return changed;
 }
-if (ensureColors()) await store.save(S);
+// Univers : tout projet qui n'est pas un recueil de chansons est un roman (anciens projets « fiction »).
+function ensureKinds() {
+  let changed = false;
+  for (const p of S.projects) if (p.kind !== "chansons" && p.kind !== "roman") { p.kind = "roman"; changed = true; }
+  return changed;
+}
+if (ensureKinds() | ensureColors()) await store.save(S);
+
+// ---------- objectifs de mots (roman) ----------
+// Mots du jour = total actuel du projet moins le total au premier passage de la journée.
+
+const DEFAULT_DAILY = 500;
+const todayKey = () => new Date().toLocaleDateString("sv");   // AAAA-MM-JJ, heure locale
+const projectWords = p => p.scenes.reduce((a, s) => a + words(s.text), 0);
+function wordsToday(p) {
+  const d = todayKey(), total = projectWords(p);
+  if (p.day?.date !== d) p.day = { date: d, start: total };
+  const n = Math.max(0, total - p.day.start);
+  (p.history ??= {})[d] = n;
+  return n;
+}
 
 // ---------- navigation ----------
 // Mobile : deux écrans, la liste et l'écriture. Ordinateur : les deux côte à côte.
@@ -139,15 +159,24 @@ const styleLabel = s => STYLES.find(([v]) => v === (s.style || "pop"))[1];
 
 function renderProjects() {
   const p = P(), k = K();
+  document.body.dataset.universe = kindName(p);
   $("projectName").textContent = p.name || k.newProjectName;
+  $("tabItems").querySelector("span").textContent = k.items;
+  $("tabBank").querySelector("span").textContent = k.bankTab;
+  if (k.novel) {
+    // Roman : ornement, progression vers l'objectif, total de mots.
+    const tot = projectWords(p);
+    const pct = p.goal ? Math.min(100, Math.round(tot / p.goal * 100)) : 0;
+    $("bigCount").innerHTML = `<span class="ornament" aria-hidden="true">· · ·</span>${p.goal ? `<span class="goalbar" role="img" aria-label="${pct} % de l'objectif"><span style="width:${pct}%"></span></span>` : ""}`;
+    $("totals").innerHTML = `<span>${fmt(tot)}</span><span>${p.goal ? `objectif ${p.goal.toLocaleString("fr-FR")}` : `${plural(p.scenes.length, "chapitre")}`}</span>`;
+    return;
+  }
   const n = p.scenes.length;
   $("bigCount").innerHTML = `<span>${pad(n)}</span><span>${k.bigLabel}</span>`;
   const c = st => p.scenes.filter(s => s.status === st).length;
   const rest = [c("brouillon") && plural(c("brouillon"), "brouillon"), c("idee") && plural(c("idee"), "idée")].filter(Boolean).join(", ") || "rien en cours";
   const tot = p.scenes.reduce((a, s) => a + words(s.text), 0);
   $("totals").innerHTML = `<span><b>${k.done(c("revise"))}</b><small>${rest}</small></span><span><b>${tot.toLocaleString("fr-FR")}</b><small>mots écrits</small></span>`;
-  $("tabItems").querySelector("span").textContent = k.items;
-  $("tabBank").querySelector("span").textContent = k.bankTab;
 }
 
 function renderScenes() {
@@ -155,29 +184,49 @@ function renderScenes() {
   $("sceneList").innerHTML = p.scenes.map((s, i) => {
     const title = esc(s.title || "Sans titre");
     const status = `<span class="chip-status">${k.statuses[s.status]}</span>`;
-    if (k.songs) return `<button class="card c-${s.color}${s === cur ? " on" : ""}" data-id="${s.id}">
+    if (k.songs) return `<button class="item card c-${s.color}${s === cur ? " on" : ""}" data-id="${s.id}">
       <span class="top"><span class="t">${title}</span><span class="key" aria-label="Tonalité">${s.key ? esc(keyShort(s.key)) : "—"}</span></span>
       <span class="bottom"><span><b>${esc(s.tempo || "—")}</b><small>BPM</small></span>${status}<span><b>${styleLabel(s) === "Pop" ? "Pop" : "Chanson"}</b><small>${esc(s.meter || "mesure ?")}</small></span></span>
     </button>`;
-    const fiches = hitsFor(s).length;
-    return `<button class="card c-${s.color}${s === cur ? " on" : ""}" data-id="${s.id}">
-      <span class="top"><span class="t">${title}</span><span class="key">${pad(i + 1)}</span></span>
-      <span class="bottom"><span><b>${words(s.text).toLocaleString("fr-FR")}</b><small>mots</small></span>${status}<span><b>${fiches}</b><small>${fiches > 1 ? "fiches" : "fiche"}</small></span></span>
+    // Roman : une ligne de table des matières.
+    const n = words(s.text);
+    return `<button class="item toc${s === cur ? " on" : ""} st-${s.status}" data-id="${s.id}">
+      <span class="num">${roman(i + 1)}.</span>
+      <span class="tt"><span class="t">${title}</span><span class="leader" aria-hidden="true"></span></span>
+      <span class="n">${n ? n.toLocaleString("fr-FR") : "—"} <span class="glyph" role="img" aria-label="${k.statuses[s.status]}"></span></span>
     </button>`;
   }).join("");
+  $("sceneList").classList.toggle("toc-list", !!k.novel);
   renderProjects();
 }
 
 // En-tête de l'écran d'écriture : couleur, ligne d'infos, titre, chiffres clés.
 function renderHead() {
   const s = Sc(), k = K(), p = P();
-  $("ecrirePane").className = `ecrire c-${s.color}${k.songs ? " songs" : ""}`;
+  $("ecrirePane").className = `ecrire ${k.songs ? `c-${s.color} songs` : "novel"}`;
+  $("runningHead").textContent = k.novel ? p.name : "";
+  if (k.novel) {
+    $("eyebrow").textContent = `${k.item.toUpperCase()} ${roman(p.scenes.indexOf(s) + 1)}`;
+    $("facts").innerHTML = "";
+    renderGoal();
+    return;
+  }
   $("eyebrow").textContent = k.songs
     ? `${styleLabel(s)} · ${k.statuses[s.status]}`
     : `${k.item} ${p.scenes.indexOf(s) + 1} · ${k.statuses[s.status]}`;
   $("facts").innerHTML = k.songs
     ? `<span><b>${s.key ? esc(keyShort(s.key)) : "—"}</b><small>${s.key ? keyLabel(s.key) : "Tonalité"}</small></span><span><b>${esc(s.tempo || "—")}</b><small>BPM${s.meter ? " · " + esc(s.meter) : ""}</small></span>`
     : `<span><b>${words(s.text).toLocaleString("fr-FR")}</b><small>mots</small></span>`;
+}
+
+// Objectif du jour et numéro de page estimé (250 mots par page) en bas de l'écriture.
+function renderGoal() {
+  const p = P(), s = Sc();
+  const today = wordsToday(p), goal = p.dailyGoal || DEFAULT_DAILY;
+  $("goalText").innerHTML = `<b>${today.toLocaleString("fr-FR")}</b> / ${goal.toLocaleString("fr-FR")} mots aujourd'hui`;
+  const upTo = p.scenes.slice(0, p.scenes.indexOf(s) + 1).reduce((a, x) => a + words(x.text), 0);
+  $("pageNo").textContent = `p. ${Math.max(1, Math.ceil(upTo / 250))}`;
+  $("goalFill").style.width = `${Math.min(100, today / goal * 100)}%`;
 }
 
 // Le titre s'agrandit sur plusieurs lignes si besoin. Écran caché : on ne mesure pas (la hauteur vaudrait 0).
@@ -252,22 +301,24 @@ function arm(btn, key, fn, label) {
 }
 
 $("sceneList").onclick = e => {
-  const b = e.target.closest(".card"); if (!b) return;
+  const b = e.target.closest(".item"); if (!b) return;
   P().sceneId = b.dataset.id; save();
   $("sceneTitle").blur(); $("sceneText").blur();
   renderScenes(); renderEditor(); renderMentions(); setView("ecrire");
 };
 $("backBtn").onclick = () => { save(); renderScenes(); setView("liste"); };
-$("sceneTitle").oninput = e => { Sc().title = e.target.value.replace(/\n/g, " "); fitTitle(); queue(); renderMentions(); };
+// La liste se met à jour peu après la frappe, jamais à la perte du focus : sinon elle se
+// redessinerait entre l'appui et le relâchement d'un clic sur une carte, et le clic serait perdu.
+let listT;
+function scheduleListRender() { clearTimeout(listT); listT = setTimeout(renderScenes, 300); }
+$("sceneTitle").oninput = e => { Sc().title = e.target.value.replace(/\n/g, " "); fitTitle(); queue(); renderMentions(); scheduleListRender(); };
 $("sceneTitle").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); $("sceneText").focus(); } };
-$("sceneTitle").onblur = () => renderScenes();
 $("sceneText").oninput = e => {
   Sc().text = e.target.value; queue();
   $("wc").textContent = fmt(words(e.target.value));
-  if (!K().songs) renderHead();
-  renderAnalysis(); renderMentions();
+  if (K().novel) renderGoal();
+  renderAnalysis(); renderMentions(); scheduleListRender();
 };
-$("sceneText").onblur = () => renderScenes();
 
 function newItem(kind, title, prev, next) {
   const s = { id: uid(), title, status: "idee", text: kind.template, color: nextColor(prev?.color, next?.color) };
@@ -324,7 +375,13 @@ $("exportBtn").onclick = () => {
 function renderSettings() {
   const s = Sc(), k = K(), i = P().scenes.indexOf(s);
   const seg = (name, items, cur) => `<div class="seg" role="radiogroup" aria-label="${name}">${items.map(([v, l]) => `<button role="radio" data-set="${name}" data-v="${esc(v)}" aria-checked="${v === cur}">${esc(l)}</button>`).join("")}</div>`;
-  let html = `<div class="group"><span class="label">Statut</span>${seg("statut", Object.entries(k.statuses), s.status)}</div>
+  let html = `<div class="group"><span class="label">Statut</span>${seg("statut", Object.entries(k.statuses), s.status)}</div>`;
+  if (k.novel) {
+    const p = P();
+    html += `<div class="group"><span class="label">Objectifs du roman</span>
+      <div class="goals"><label class="field"><span>Total (mots)</span><input id="goalInput" inputmode="numeric" value="${p.goal || ""}" placeholder="ex. 80 000"></label>
+      <label class="field"><span>Par jour (mots)</span><input id="dailyInput" inputmode="numeric" value="${p.dailyGoal || ""}" placeholder="${DEFAULT_DAILY}"></label></div></div>`;
+  } else html += `
     <div class="group"><span class="label">Couleur <em>${PALETTE_LABELS[s.color]}</em></span><div class="swatches" role="radiogroup" aria-label="Couleur">${PALETTE.map(c => `<button class="c-${c}" role="radio" data-set="couleur" data-v="${c}" aria-checked="${c === s.color}" aria-label="${PALETTE_LABELS[c]}"></button>`).join("")}</div></div>`;
   if (k.songs) {
     const key = parseKey(s.key), style = s.style || "pop";
@@ -384,14 +441,25 @@ $("settingsBody").oninput = e => {
   const s = Sc();
   if (e.target.id === "tempoInput") { s.tempo = e.target.value.replace(/\D/g, "").slice(0, 3); queue(); renderHead(); }
   if (e.target.id === "notesInput") { s.notes = e.target.value; queue(); }
+  if (e.target.id === "goalInput" || e.target.id === "dailyInput") {
+    const n = parseInt(e.target.value.replace(/\D/g, ""), 10) || 0;
+    P()[e.target.id === "goalInput" ? "goal" : "dailyGoal"] = n;
+    queue(); renderProjects(); renderGoal();
+  }
 };
 
 // ---------- projets ----------
 
+const KIND_CHOICES = [["chansons", "Chansons"], ["roman", "Roman"]];
 function renderProjectsDlg() {
   $("projectRename").value = P().name;
-  $("projectList").innerHTML = S.projects.map((p, i) => `<button class="c-${PALETTE[i % PALETTE.length]}" data-pid="${p.id}" aria-current="${p.id === S.current}"><b>${esc(p.name || "Sans titre")}</b><small>${kindOf(p).kindLabel} · ${p.scenes.length}</small></button>`).join("");
+  $("projectKind").innerHTML = KIND_CHOICES.map(([v, l]) => `<button role="radio" data-kind="${v}" aria-checked="${kindName(P()) === v}">${l}</button>`).join("");
+  $("projectList").innerHTML = S.projects.map(p => `<button class="u-${kindName(p)}" data-pid="${p.id}" aria-current="${p.id === S.current}"><b>${esc(p.name || "Sans titre")}</b><small>${kindOf(p).kindLabel} · ${plural(p.scenes.length, kindOf(p).item.toLowerCase())}</small></button>`).join("");
 }
+$("projectKind").onclick = e => {
+  const v = e.target.closest("[data-kind]")?.dataset.kind; if (!v || v === kindName(P())) return;
+  P().kind = v; ensureColors(); save(); all(); renderProjectsDlg();
+};
 function openProjects() { renderProjectsDlg(); $("projectsDlg").showModal(); }
 $("projectBtn").onclick = openProjects;
 $("projectsTab").onclick = openProjects;
@@ -403,15 +471,14 @@ $("projectList").onclick = e => {
 $("projectRename").oninput = e => { P().name = e.target.value; queue(); renderProjects(); renderProjectsDlg(); };
 $("projectRename").onkeydown = e => { if (e.key === "Enter") $("projectsDlg").close(); };
 $("projectsDlg").addEventListener("close", () => { if (!P().name.trim()) { P().name = K().newProjectName; save(); } all(); });
-function newProject(kindName) {
-  const p = { id: uid(), scenes: [], bible: [] };
-  if (kindName !== "fiction") p.kind = kindName;
+function newProject(kind) {
+  const p = { id: uid(), kind, scenes: [], bible: [] };
   const k = kindOf(p), s = newItem(k, k.firstItem, null, null);
   Object.assign(p, { name: k.newProjectName, sceneId: s.id, scenes: [s] });
   S.projects.push(p); S.current = p.id; save(); all(); setPane("items");
   renderProjectsDlg(); $("projectRename").focus(); $("projectRename").select();
 }
-$("newProject").onclick = () => newProject("fiction");
+$("newProject").onclick = () => newProject("roman");
 $("newSongs").onclick = () => newProject("chansons");
 
 // ---------- fichiers ----------

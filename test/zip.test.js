@@ -35,8 +35,8 @@ test('tous les projets, un dossier chacun, relisibles', () => {
   ] };
   const files = workspaceToFiles(state);
   assert.deepEqual([...files.keys()].sort(), [
-    'meme-nom-2/bible/lieux/port.md', 'meme-nom-2/projet.md', 'meme-nom-2/scenes/un.md',
-    'meme-nom/projet.md', 'meme-nom/scenes/un.md',
+    'meme-nom-2/chapitres/un.md', 'meme-nom-2/projet.md', 'meme-nom-2/univers/lieux/port.md',
+    'meme-nom/chapitres/un.md', 'meme-nom/projet.md',
   ]);
   const sub = new Map([...files].filter(([p]) => p.startsWith('meme-nom-2/')).map(([p, c]) => [p.slice(11), c]));
   const back = filesToProject(sub);

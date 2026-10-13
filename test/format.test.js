@@ -34,13 +34,13 @@ test('countWords', () => {
 test('aller-retour complet du projet', () => {
   const files = projectToFiles(projet);
   assert.deepEqual([...files.keys()].sort(), [
-    'bible/lieux/vhal.md',
-    'bible/lore/2077.md',
-    'bible/personnages/lena-ardent.md',
+    'chapitres/ouverture-la-tempete-2.md',
+    'chapitres/ouverture-la-tempete.md',
+    'chapitres/true.md',
     'projet.md',
-    'scenes/ouverture-la-tempete-2.md',
-    'scenes/ouverture-la-tempete.md',
-    'scenes/true.md',
+    'univers/lieux/vhal.md',
+    'univers/lore/2077.md',
+    'univers/personnages/lena-ardent.md',
   ]);
   const back = filesToProject(files);
   assert.equal(back.name, projet.name);
@@ -55,16 +55,16 @@ test('aller-retour complet du projet', () => {
 
 test('lisible à la main', () => {
   const files = projectToFiles(projet);
-  assert.equal(files.get('scenes/ouverture-la-tempete.md'),
+  assert.equal(files.get('chapitres/ouverture-la-tempete.md'),
     '---\nid: s1\ntitre: "Ouverture : la tempête"\nstatut: brouillon\n---\n\nIl pleuvait.\n\n— « Encore ? » dit-elle.\n');
-  assert.equal(files.get('bible/personnages/lena-ardent.md'),
+  assert.equal(files.get('univers/personnages/lena-ardent.md'),
     '---\nid: f1\nnom: Léna Ardent\nalias:\n  - Léna\n  - la Capitaine\n  - "L: \\"A\\""\n---\n\nPilote.');
 });
 
 test('le nom de fichier ne change pas quand le titre change', () => {
   const back = filesToProject(projectToFiles(projet));
   back.scenes[0].title = 'Nouveau titre';
-  assert.ok(projectToFiles(back).has('scenes/ouverture-la-tempete.md'));
+  assert.ok(projectToFiles(back).has('chapitres/ouverture-la-tempete.md'));
 });
 
 test('fichiers édités à la main : tolérance', () => {
@@ -128,4 +128,25 @@ test('projet de chansons : fichiers et aller-retour', () => {
   assert.deepEqual(back.scenes.map(({ file, ...s }) => s), recueil.scenes);
   const byId = a => [...a].sort((x, y) => x.id.localeCompare(y.id)).map(({ file, ...f }) => f);
   assert.deepEqual(byId(back.bible), recueil.bible);
+});
+
+test('ancien export « fiction » (scenes/, bible/) lu comme un roman', () => {
+  const p = filesToProject({
+    'projet.md': '---\ntitre: Vieux projet\nscenes:\n  - un\n---\n',
+    'scenes/un.md': '---\ntitre: Un\n---\nTexte',
+    'bible/lieux/port.md': '---\nnom: Port\n---\n',
+  });
+  assert.equal(p.kind, 'roman');
+  assert.deepEqual(p.scenes.map(s => s.title), ['Un']);
+  assert.deepEqual(p.bible.map(f => [f.type, f.name]), [['Lieu', 'Port']]);
+  // Réécrit au nouveau format.
+  assert.deepEqual([...projectToFiles(p).keys()].sort(), ['chapitres/un.md', 'projet.md', 'univers/lieux/port.md']);
+});
+
+test('roman : objectifs de mots conservés', () => {
+  const files = projectToFiles({ ...projet, kind: 'roman', goal: 80000, dailyGoal: 1000 });
+  assert.match(files.get('projet.md'), /type: roman\nobjectif: "80000"\nobjectif_jour: "1000"/);
+  const back = filesToProject(files);
+  assert.equal(back.goal, 80000);
+  assert.equal(back.dailyGoal, 1000);
 });

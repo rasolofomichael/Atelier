@@ -268,3 +268,72 @@ body.focus #focusBtn{background:var(--ink);color:var(--sheet)}
 .toast.update .pill{border-color:var(--sheet);color:var(--sheet)}
 
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* =========================================================================
+   Univers roman — « Manuscrit » : ivoire, table des matières, page de livre.
+   ========================================================================= */
+body[data-universe="roman"]{
+  --bg:#f6f1e7; --sheet:#fffcf5; --ink:#2a2620; --muted:#8b8070; --faint:#a89c88; --line:#e6dcc8; --soft:#ece4d4; --pill-line:#cbbfa8;
+  --gold:#8a6d3b; --display:"Fraunces",Georgia,serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) body[data-universe="roman"]{
+  --bg:#1c1a16; --sheet:#24211c; --ink:#ece4d4; --muted:#a89c88; --faint:#7d7466; --line:#3a352c; --soft:#2e2a23; --pill-line:#4a443a; --gold:#d1b27a}}
+:root[data-theme="dark"] body[data-universe="roman"]{
+  --bg:#1c1a16; --sheet:#24211c; --ink:#ece4d4; --muted:#a89c88; --faint:#7d7466; --line:#3a352c; --soft:#2e2a23; --pill-line:#4a443a; --gold:#d1b27a}
+
+/* Liste : page de titre puis table des matières */
+[data-universe="roman"] .hero{text-align:center;padding-left:28px;padding-right:28px}
+[data-universe="roman"] .projet{font-family:var(--display);font-style:italic;font-size:2rem;font-weight:400;line-height:1.15;justify-content:center;margin:0 auto;padding:4px 0}
+[data-universe="roman"] .projet span{white-space:normal}
+[data-universe="roman"] .big{display:flex;flex-direction:column;align-items:center;gap:10px;font-size:1rem;margin-top:6px}
+[data-universe="roman"] .ornament{font-family:var(--display);color:var(--gold);letter-spacing:.6em;font-size:1rem;padding-left:.6em}
+[data-universe="roman"] .goalbar{display:block;width:100%;height:3px;border-radius:2px;background:var(--line);overflow:hidden}
+[data-universe="roman"] .goalbar>span{display:block;height:100%;background:var(--ink)}
+[data-universe="roman"] .stats{justify-content:space-between;margin-top:8px;font-size:.8rem;color:var(--muted)}
+[data-universe="roman"] .stats>span{display:inline;padding:0!important;border:0!important}
+[data-universe="roman"] .sheet{background:transparent;border-radius:0;margin-top:22px;padding-left:22px;padding-right:22px}
+.toc-list::before{content:"Table des matières";display:block;font-size:.7rem;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.toc{display:grid;grid-template-columns:2.4rem minmax(0,1fr) auto;align-items:baseline;gap:4px;width:100%;padding:13px 10px;margin:0 -10px;width:calc(100% + 20px);border:none;border-bottom:1px solid var(--line);border-radius:6px;background:none;text-align:left;color:var(--ink)}
+.toc.on{background:color-mix(in srgb,var(--gold) 13%,transparent)}
+.toc .num{font-family:var(--display);color:var(--muted);font-size:.95rem}
+.toc .tt{display:flex;align-items:baseline;gap:6px;min-width:0}
+.toc .t{font-family:var(--body);font-size:1.05rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.toc.on .t{font-style:italic}
+.toc .leader{flex:1;min-width:12px;border-bottom:1.5px dotted var(--pill-line);transform:translateY(-4px)}
+.toc .n{font-size:.75rem;color:var(--muted);white-space:nowrap}
+.toc.on .n{color:var(--ink);font-weight:700}
+.toc.st-idee .t{color:var(--muted)}
+/* Statut : cercle vide (idée), à moitié plein (brouillon), plein (révisé). */
+.toc .glyph{display:inline-block;width:9px;height:9px;border-radius:50%;border:1.5px solid currentColor;vertical-align:-1px;margin-left:3px}
+.toc.st-brouillon .glyph{background:linear-gradient(90deg,currentColor 50%,transparent 50%)}
+.toc.st-revise .glyph{background:currentColor}
+
+/* Écriture : page de manuscrit */
+.ecrire.novel{background:var(--bg);color:var(--ink)}
+.ecrire.novel .round{background:var(--soft)}
+.running{text-align:center;font-size:.62rem;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:var(--muted);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:0 6px}
+.ecrire.novel .ehead{text-align:center;padding:18px 28px 6px}
+.ecrire.novel .eyebrow{display:block;width:100%;text-align:center;font-family:var(--display);font-size:.9rem;font-weight:400;letter-spacing:.22em;color:var(--muted)}
+.ecrire.novel .ehead-row{justify-content:center}
+.ecrire.novel #sceneTitle{text-align:center;font-family:var(--display);font-style:italic;font-weight:400;font-size:30px;letter-spacing:0}
+.ecrire.novel .facts{display:none}
+.ecrire.novel .paper{background:var(--bg);border-radius:0}
+.ecrire.novel #sceneText,.ecrire.novel .mirror{text-align:justify;hyphens:auto;-webkit-hyphens:auto;padding-left:30px;padding-right:30px}
+.ecrire.novel .accessory{background:var(--bg);border-top-color:var(--line)}
+.ecrire.novel #wc{display:none}
+.novel-only{display:none}
+.ecrire.novel .novel-only{display:flex}
+.goal{flex:1;min-width:0;flex-direction:column;gap:6px}
+.goal-row{display:flex;justify-content:space-between;gap:8px;font-size:.75rem;color:var(--muted)}
+.goal-row b{color:var(--ink)}
+.goal .goalbar{display:block;height:4px;border-radius:2px;background:var(--line);overflow:hidden}
+.goal .goalbar>span{display:block;height:100%;background:var(--gold);transition:width .3s}
+
+/* Réglages : objectifs */
+.goals{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.goals .field{margin:0;letter-spacing:.1em}
+
+/* Projets : repère d'univers */
+.project-list .u-chansons{background:#e3bd7f;color:#5a3f12}
+.project-list .u-roman{background:#ece4d4;color:#2a2620;font-family:var(--body)}
+.project-list .u-roman b{font-family:"Fraunces",Georgia,serif;font-style:italic;font-weight:400;font-size:1.05rem}

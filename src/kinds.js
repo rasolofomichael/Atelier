@@ -1,28 +1,29 @@
 // Vocabulaire et réglages propres à chaque type de projet.
 
 export const KINDS = {
-  fiction: {
-    projectLabel: 'Nouveau projet de fiction',
-    newProjectName: 'Nouveau projet',
-    kindLabel: 'Fiction',
-    items: 'Scènes', item: 'Scène', bigLabel: 'SCÈNES', newItem: 'Nouvelle scène', firstItem: 'Première scène',
-    addLabel: 'Nouvelle scène',
-    titlePh: 'Titre de la scène', textPh: 'Écris ici…', template: '',
-    del: 'Supprimer la scène', keepOne: 'Garde au moins une scène',
-    statuses: { idee: 'Idée', brouillon: 'Brouillon', revise: 'Révisée' },
-    done: n => `${n} révisée${n > 1 ? 's' : ''}`,
-    bank: "Bible de l'univers", bankTab: 'Bible', addEntry: 'Fiche',
+  roman: {
+    projectLabel: 'Nouveau roman',
+    newProjectName: 'Nouveau roman',
+    kindLabel: 'Roman', icon: 'livre',
+    items: 'Chapitres', item: 'Chapitre', bigLabel: 'CHAPITRES', newItem: 'Nouveau chapitre', firstItem: 'Premier chapitre',
+    addLabel: 'Nouveau chapitre',
+    titlePh: 'Titre du chapitre', textPh: 'Il était une fois…', template: '',
+    del: 'Supprimer le chapitre', keepOne: 'Garde au moins un chapitre',
+    statuses: { idee: 'Idée', brouillon: 'Brouillon', revise: 'Révisé' },
+    done: n => `${n} révisé${n > 1 ? 's' : ''}`,
+    bank: 'Univers du roman', bankTab: 'Univers', addEntry: 'Fiche',
     types: [['Personnage', 'Personnages'], ['Lieu', 'Lieux'], ['Lore', 'Lore']],
     namePh: 'Nom', aliasPh: 'Alias, surnoms', notesPh: 'Notes, apparence, histoire, règles…',
     emptyBank: 'Aucune fiche dans cette catégorie.',
-    mentions: 'Présents dans cette scène',
-    noMentions: "Aucune fiche de la bible n'apparaît encore dans cette scène.",
-    bankHint: "Les fiches citées dans la scène en cours sont marquées. Les alias se séparent par des virgules.",
+    mentions: 'Présents dans ce chapitre',
+    noMentions: "Aucune fiche de l'univers n'apparaît encore dans ce chapitre.",
+    bankHint: "Les fiches citées dans le chapitre en cours sont marquées. Les alias se séparent par des virgules.",
+    novel: true,
   },
   chansons: {
     projectLabel: 'Nouveau recueil de chansons',
     newProjectName: 'Nouvelles chansons',
-    kindLabel: 'Chansons',
+    kindLabel: 'Chansons', icon: 'note',
     items: 'Chansons', item: 'Chanson', bigLabel: 'TITRES', newItem: 'Nouvelle chanson', firstItem: 'Première chanson',
     addLabel: 'Nouvelle chanson',
     titlePh: 'Titre de la chanson', textPh: '## Couplet 1\nTes paroles…', template: '## Couplet 1\n\n\n## Refrain\n\n',
@@ -40,7 +41,16 @@ export const KINDS = {
   },
 };
 
-export const kindOf = project => KINDS[project?.kind] ?? KINDS.fiction;
+export const kindOf = project => KINDS[project?.kind] ?? KINDS.roman;
+export const kindName = project => (project?.kind === 'chansons' ? 'chansons' : 'roman');
+
+// Chiffres romains pour la table des matières.
+export function roman(n) {
+  const t = [[1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'], [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'], [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']];
+  let out = '';
+  for (const [v, r] of t) while (n >= v) { out += r; n -= v; }
+  return out;
+}
 
 export function fmtWords(n) {
   return n.toLocaleString('fr-FR') + (n > 1 ? ' mots' : ' mot');

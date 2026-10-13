@@ -67,7 +67,7 @@
       <button class="round back" id="backBtn" aria-label="Retour à la liste">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
       </button>
-      <span class="sp"></span>
+      <span class="sp running" id="runningHead"></span>
       <button class="round" id="focusBtn" aria-label="Mode focus" aria-pressed="false">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
       </button>
@@ -98,7 +98,11 @@
           <div class="section-menu" id="sectionMenu" role="menu" hidden></div>
         </div>
         <button class="pill song-only" id="analyseBtn" aria-pressed="true">Rimes</button>
-        <span class="sp"></span>
+        <div class="goal novel-only" id="goalBox">
+          <div class="goal-row"><span id="goalText"></span><span id="pageNo"></span></div>
+          <div class="goalbar" aria-hidden="true"><span id="goalFill"></span></div>
+        </div>
+        <span class="sp song-only"></span>
         <span class="status"><span id="wc">0 mot</span><span id="saved">Enregistré</span></span>
         <button class="round" id="settingsBtn" aria-label="Réglages">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
@@ -118,10 +122,12 @@
 <dialog id="projectsDlg" class="sheet-dlg" aria-labelledby="projectsTitle">
   <div class="dlg-head"><h2 id="projectsTitle">Projets</h2><button class="pill dark small" id="projectsOk">OK</button></div>
   <label class="field"><span>Nom du projet en cours</span><input id="projectRename" autocomplete="off"></label>
+  <div class="group"><span class="label">Univers du projet en cours</span><div class="seg" role="radiogroup" aria-label="Univers" id="projectKind"></div></div>
   <div class="project-list" id="projectList"></div>
   <div class="row-actions">
     <button class="pill" id="newSongs">+ Recueil de chansons</button>
-    <button class="pill" id="newProject">+ Projet de fiction</button>
+    <button class="pill" id="newProject">+ Roman</button>
+    <button class="pill" disabled title="Arrive avec l'éditeur de scénario">+ Film ou série · bientôt</button>
   </div>
 </dialog>
 

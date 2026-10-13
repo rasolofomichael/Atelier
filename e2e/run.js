@@ -175,10 +175,10 @@ test('iPhone : deux écrans (écriture puis liste), sans défilement horizontal'
   await page.click('#backBtn');
   assert.ok(await page.isVisible('#sceneList'));
   assert.ok(await page.isHidden('#sceneText'));
-  assert.equal(await page.textContent('#bigCount'), '03SCÈNES');
+  assert.equal(await page.locator('.toc').count(), 3);
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-  // Une carte ouvre l'écriture.
-  await page.locator('.card').nth(1).click();
+  // Une ligne de la table des matières ouvre l'écriture.
+  await page.locator('.toc').nth(1).click();
   assert.equal(await page.inputValue('#sceneTitle'), 'La maison du passeur');
   assert.deepEqual(errors, []);
   await ctx.close();
@@ -199,19 +199,23 @@ test('ordinateur : liste et écriture côte à côte', async () => {
   await ctx.close();
 });
 
-test('couleurs : chaque carte a la sienne, différente de ses voisines, modifiable', async () => {
+test('couleurs : chaque chanson a la sienne, différente de ses voisines, modifiable', async () => {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const { page, errors } = await open(ctx);
+  await newSongbook(page);
+  await page.click('#addBtn');
+  await page.click('#addBtn');
   const colors = () => page.locator('.card').evaluateAll(els => els.map(e => [...e.classList].find(c => c.startsWith('c-'))));
   const before = await colors();
   assert.equal(before.length, 3);
   assert.ok(before.every(Boolean));
-  await page.click('#addBtn');   // nouvelle scène après la première
+  await page.locator('.card').first().click();
+  await page.click('#addBtn');   // nouvelle chanson après la première
   const after = await colors();
   assert.equal(after.length, 4);
   assert.notEqual(after[1], after[0]);
   assert.notEqual(after[1], after[2]);
-  // L'écran d'écriture prend la couleur de la scène.
+  // L'écran d'écriture prend la couleur de la chanson.
   assert.ok(await page.locator(`#ecrirePane.${after[1]}`).count());
   await settings(page, [['couleur', 'olive']]);
   await page.click('#settingsOk');
@@ -274,7 +278,7 @@ test('menu : ouverture, fermeture au clic extérieur et avec Échap', async () =
   await toList(page);
   await page.click('#menuBtn');
   assert.ok(await page.isVisible('#menuPanel'));
-  await page.locator('#totals small').first().click();   // zone neutre, hors du menu
+  await page.click('#totals');   // zone neutre, hors du menu
   assert.ok(await page.isHidden('#menuPanel'));
   await page.click('#menuBtn');
   await page.keyboard.press('Escape');
@@ -292,8 +296,8 @@ test('export Markdown (.zip) de tous les projets', async () => {
   const { execFileSync } = await import('node:child_process');
   const names = execFileSync('python3', ['-I', '-c', 'import sys,zipfile;print("\\n".join(sorted(zipfile.ZipFile(sys.argv[1]).namelist())))', await dl.path()]).toString().trim().split('\n');
   assert.ok(names.includes('exemple-la-ville-sous-la-pluie/projet.md'), names.join(', '));
-  assert.ok(names.includes('exemple-la-ville-sous-la-pluie/bible/personnages/lia.md'));
-  const scene = execFileSync('python3', ['-I', '-c', 'import sys,zipfile;print(zipfile.ZipFile(sys.argv[1]).read("exemple-la-ville-sous-la-pluie/scenes/ouverture-le-quai.md").decode())', await dl.path()]).toString();
+  assert.ok(names.includes('exemple-la-ville-sous-la-pluie/univers/personnages/lia.md'));
+  const scene = execFileSync('python3', ['-I', '-c', 'import sys,zipfile;print(zipfile.ZipFile(sys.argv[1]).read("exemple-la-ville-sous-la-pluie/chapitres/ouverture-le-quai.md").decode())', await dl.path()]).toString();
   assert.match(scene, /Texte exporté\./);
   assert.deepEqual(errors, []);
   await ctx.close();
@@ -352,12 +356,13 @@ test('recueil de chansons : création, réglages, sections, banque d\'idées', a
   assert.equal(await page.textContent('[data-set="statut"][data-v="revise"]'), 'Finie');
   await page.click('#settingsOk');
 
-  // Retour à la fiction : vocabulaire d'origine.
+  // Retour au roman : vocabulaire et univers d'origine.
   await toList(page);
   await page.click('#projectBtn');
   await page.locator('#projectList button').first().click();
   await page.click('#projectsOk');
-  assert.equal(await page.textContent('#tabItems'), 'Scènes');
+  assert.equal(await page.textContent('#tabItems'), 'Chapitres');
+  assert.equal(await page.evaluate(() => document.body.dataset.universe), 'roman');
   assert.equal(await page.locator('#ecrirePane.songs').count(), 0);
   assert.deepEqual(errors, []);
   await ctx.close();
@@ -425,6 +430,57 @@ test('syllabes et rimes : affichage aligné sur le texte, styles, désactivation
   await page.waitForSelector('body.ready');
   assert.equal(await page.locator('#editor.analyse, #mirror .cnt, #mirror mark').count(), 0);
   assert.equal(await page.textContent('#eyebrow'), 'Chanson française · Idée');
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test('roman : table des matières, page de manuscrit, objectifs, changement d\'univers', async () => {
+  const ctx = await browser.newContext(IPHONE);
+  const { page, errors } = await open(ctx);
+  assert.equal(await page.evaluate(() => document.body.dataset.universe), 'roman');
+  assert.equal(await page.textContent('#eyebrow'), 'CHAPITRE I');
+  assert.equal(await page.textContent('#runningHead'), 'Exemple · La ville sous la pluie');
+
+  // Objectifs : total et du jour ; les mots écrits aujourd'hui sont comptés.
+  await page.click('#settingsBtn');
+  await page.fill('#goalInput', '80000');
+  await page.fill('#dailyInput', '1000');
+  await page.click('#settingsOk');
+  assert.match(await page.textContent('#goalText'), /^0 \/ 1\s000 mots aujourd'hui$/);
+  await page.click('#sceneText');
+  await page.keyboard.press('End');
+  await page.keyboard.type(' Trois mots de plus.');
+  assert.match(await page.textContent('#goalText'), /^4 \/ 1\s000/);
+
+  // Table des matières : chiffres romains, chapitre en cours marqué.
+  await toList(page);
+  assert.deepEqual(await page.locator('.toc .num').allTextContents(), ['I.', 'II.', 'III.']);
+  assert.equal(await page.locator('.toc.on .t').textContent(), 'Ouverture : le quai');
+  assert.match(await page.textContent('#totals'), /objectif 80\s000/);
+
+  // Nouveau chapitre : ajouté après le chapitre en cours, numéroté.
+  await page.click('#addBtn');
+  assert.equal(await page.textContent('#eyebrow'), 'CHAPITRE II');
+  await toList(page);
+  assert.equal(await page.locator('.toc').count(), 4);
+
+  // Les objectifs survivent au rechargement.
+  await page.waitForFunction(() => document.getElementById('saved').textContent === 'Enregistré');
+  await page.reload();
+  await page.waitForSelector('body.ready');
+  assert.match(await page.textContent('#goalText'), /^4 \/ 1\s000/);
+
+  // Changer l'univers du projet : roman -> chansons, et retour.
+  await toList(page);
+  await page.click('#projectBtn');
+  await page.click('[data-kind="chansons"]');
+  await page.click('#projectsOk');
+  assert.equal(await page.evaluate(() => document.body.dataset.universe), 'chansons');
+  assert.equal(await page.locator('.card').count(), 4);
+  await page.click('#projectBtn');
+  await page.click('[data-kind="roman"]');
+  await page.click('#projectsOk');
+  assert.equal(await page.locator('.toc').count(), 4);
   assert.deepEqual(errors, []);
   await ctx.close();
 });

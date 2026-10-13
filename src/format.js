@@ -137,30 +137,35 @@ export function parseDoc(text) {
 // En mémoire, l'app garde le modèle du prototype :
 //   élément { id, title, status, text, color? }  (+ pour une chanson : style, key, tempo, meter, notes)
 //   fiche   { id, type, name, alias: 'a, b', notes }
-// Un projet a un type (`kind`) : 'fiction' (par défaut) ou 'chansons'.
+// Un projet a un type (`kind`) : 'roman' (par défaut) ou 'chansons'.
+// Les anciens projets « fiction » (dossiers scenes/ et bible/) sont lus comme des romans.
 // Dans les fichiers, les clés sont en français et les alias forment une liste.
 // `file` (nom sans .md) mémorise le nom de fichier pour ne pas le changer
 // quand le titre change (historique git propre).
 
+const UNIVERS_DIRS = { Personnage: 'personnages', Lieu: 'lieux', Lore: 'lore' };
 export const LAYOUTS = {
-  fiction: {
-    items: 'scenes', bank: 'bible', fallback: 'Lore',
-    dirs: { Personnage: 'personnages', Lieu: 'lieux', Lore: 'lore' },
-  },
+  roman: { items: 'chapitres', bank: 'univers', fallback: 'Lore', dirs: UNIVERS_DIRS },
+  // Ancien format « fiction », en lecture seulement.
+  fiction: { items: 'scenes', bank: 'bible', fallback: 'Lore', dirs: UNIVERS_DIRS },
   chansons: {
     items: 'chansons', bank: 'idees', fallback: 'Phrase',
     dirs: { Titre: 'titres', Phrase: 'phrases', Image: 'images', 'Thème': 'themes' },
   },
 };
-export const BIBLE_DIRS = LAYOUTS.fiction.dirs;
-const layoutOf = kind => LAYOUTS[kind] ?? LAYOUTS.fiction;
+export const BIBLE_DIRS = UNIVERS_DIRS;
+const layoutOf = kind => LAYOUTS[kind] ?? LAYOUTS.roman;
+const kindOfProject = p => (p.kind === 'chansons' ? 'chansons' : 'roman');
+
+// Objectifs d'un roman : clé en mémoire -> clé dans projet.md.
+const GOAL_FIELDS = { goal: 'objectif', dailyGoal: 'objectif_jour' };
 
 // Champs propres aux chansons : clé en mémoire -> clé dans le fichier.
 const SONG_FIELDS = { style: 'style', key: 'tonalite', tempo: 'tempo', meter: 'mesure', notes: 'notes' };
 
 const splitAlias = alias => String(alias ?? '').split(',').map(a => a.trim()).filter(Boolean);
 
-export function sceneToMarkdown(scene, kind = 'fiction') {
+export function sceneToMarkdown(scene, kind = 'roman') {
   const data = { id: scene.id, titre: scene.title ?? '', statut: normalizeStatut(scene.status) };
   if (scene.color) data.couleur = scene.color;
   if (kind === 'chansons') {
@@ -169,7 +174,7 @@ export function sceneToMarkdown(scene, kind = 'fiction') {
   return stringifyDoc(data, scene.text);
 }
 
-export function markdownToScene(text, fallbackTitle = '', kind = 'fiction') {
+export function markdownToScene(text, fallbackTitle = '', kind = 'roman') {
   const { data, body } = parseDoc(text);
   const scene = {
     id: data.id || newId(),
@@ -207,7 +212,7 @@ export function markdownToFiche(text, type, fallbackName = '') {
 // Projet : { id, name, kind?, description?, sceneId?, scenes: [...], bible: [...] }
 
 export function projectToFiles(project) {
-  const kind = project.kind === 'chansons' ? 'chansons' : 'fiction';
+  const kind = kindOfProject(project);
   const L = layoutOf(kind);
   const files = new Map();
   const sceneNames = new Set();
@@ -223,8 +228,8 @@ export function projectToFiles(project) {
     const name = uniqueName(fiche.file || slugify(fiche.name), ficheNames[dir]);
     files.set(`${L.bank}/${dir}/${name}.md`, ficheToMarkdown(fiche));
   }
-  const meta = { id: project.id, titre: project.name ?? '' };
-  if (kind === 'chansons') meta.type = 'chansons';
+  const meta = { id: project.id, titre: project.name ?? '', type: kind };
+  for (const [k, f] of Object.entries(GOAL_FIELDS)) if (project[k]) meta[f] = String(project[k]);
   meta[L.items] = order;
   files.set('projet.md', stringifyDoc(meta, project.description));
   return files;
@@ -237,8 +242,10 @@ export function filesToProject(files) {
   const byPath = new Map(entries.map(([p, c]) => [p.replace(/\\/g, '/').replace(/^\.?\//, ''), c]));
 
   const { data: meta, body: description } = parseDoc(byPath.get('projet.md') ?? '');
-  const kind = String(meta.type ?? '').toLowerCase() === 'chansons' ? 'chansons' : 'fiction';
-  const L = layoutOf(kind);
+  const type = String(meta.type ?? '').toLowerCase();
+  const kind = type === 'chansons' ? 'chansons' : 'roman';
+  // Sans type, c'est un ancien projet « fiction » : dossiers scenes/ et bible/.
+  const L = kind === 'roman' && type !== 'roman' ? LAYOUTS.fiction : layoutOf(kind);
   const project = {
     id: meta.id || newId(),
     name: meta.titre ?? '',
@@ -246,7 +253,8 @@ export function filesToProject(files) {
     scenes: [],
     bible: [],
   };
-  if (kind === 'chansons') project.kind = 'chansons';
+  project.kind = kind;
+  for (const [k, f] of Object.entries(GOAL_FIELDS)) if (Number(meta[f]) > 0) project[k] = Number(meta[f]);
 
   const sceneFiles = new Map();
   const itemRe = new RegExp(`^${L.items}/([^/]+)\\.md$`, 'i');

@@ -6,8 +6,14 @@
 <meta name="theme-color" content="#eef0ec" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#12151c" media="(prefers-color-scheme: dark)">
 <title>Atelier d'écriture</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Atelier">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="stylesheet" href="fonts/fonts.css">
 <link rel="stylesheet" href="styles.css">
 <script type="module" src="src/app.js"></script>
 </head>
@@ -16,12 +22,17 @@
   <header>
     <div class="brand">Atelier<span>.</span></div>
     <select id="projectSel" aria-label="Projet" class="hide-focus"></select>
-    <button class="btn hide-focus" id="renameBtn">Renommer</button>
-    <button class="btn hide-focus" id="newProject">+ Projet</button>
     <div class="spacer"></div>
-    <button class="btn hide-focus" id="exportBtn">Copier le texte</button>
-    <button class="btn hide-focus" id="backupBtn">Sauvegardes</button>
     <button class="btn" id="focusBtn">Mode focus</button>
+    <div class="menu hide-focus">
+      <button class="btn" id="menuBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="menuPanel" aria-label="Menu">•••</button>
+      <div class="menu-panel" id="menuPanel" role="menu" hidden>
+        <button role="menuitem" id="renameBtn">Renommer le projet</button>
+        <button role="menuitem" id="newProject">Nouveau projet</button>
+        <button role="menuitem" id="exportBtn">Copier le texte du projet</button>
+        <button role="menuitem" id="backupBtn">Sauvegardes</button>
+      </div>
+    </div>
   </header>
   <nav class="tabs" aria-label="Sections">
     <button data-t="scenes">Scènes</button>
@@ -77,6 +88,7 @@
   </aside>
 </div>
 <div class="toast" id="toast" hidden></div>
+<div class="toast update" id="updateBar" hidden>Nouvelle version disponible <button class="btn" id="updateBtn">Mettre à jour</button></div>
 
 <dialog id="backupDlg" aria-labelledby="backupTitle">
   <h2 id="backupTitle">Sauvegardes <button class="btn" id="closeDlg">Fermer</button></h2>

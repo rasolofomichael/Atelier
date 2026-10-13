@@ -10,11 +10,21 @@ npm test           # tests unitaires (format Markdown)
 npm run test:e2e   # tests dans Chromium (npm install d'abord)
 ```
 
+## Publication
+
+Chaque envoi sur `main` lance les tests puis publie l'app sur GitHub Pages
+(`.github/workflows/publier.yml`) : https://rasolofomichael.github.io/Atelier/
+
+Sur iPhone : ouvrir cette adresse dans Safari, bouton Partager, « Sur l'écran d'accueil ».
+L'app fonctionne ensuite hors ligne. Quand une nouvelle version est publiée,
+l'app propose « Mettre à jour » ; rien ne change pendant l'écriture sans accord.
+
 ## Organisation
 
 - `index.html`, `styles.css`, `src/app.js` : l'application (sans framework, sans compilation).
 - `src/store.js` : stockage local (IndexedDB, repli localStorage), copies de secours.
 - `src/format.js` : conversion projet <-> fichiers Markdown (voir `FORMAT.md`).
+- `sw.js`, `manifest.webmanifest`, `icons/`, `fonts/` : app installable et hors ligne. Tout nouveau fichier de l'app doit être ajouté à `ASSETS` dans `sw.js` (un test le vérifie).
 - `prototype/atelier.html` : prototype d'origine, gardé pour référence.
 
 ## Données

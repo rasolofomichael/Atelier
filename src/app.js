@@ -226,5 +226,37 @@ $("importJson").onchange = async e => {
   }
 };
 
+// ---------- menu ----------
+
+function setMenu(open) {
+  $("menuPanel").hidden = !open;
+  $("menuBtn").setAttribute("aria-expanded", String(open));
+}
+$("menuBtn").onclick = e => { e.stopPropagation(); setMenu($("menuPanel").hidden); };
+$("menuPanel").addEventListener("click", () => setMenu(false));
+document.addEventListener("click", e => { if (!e.target.closest(".menu")) setMenu(false); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("menuPanel").hidden) { setMenu(false); $("menuBtn").focus(); } });
+
 all();
 document.body.classList.add("ready");
+
+// ---------- hors ligne et mises à jour ----------
+// Une nouvelle version ne s'installe jamais d'elle-même pendant l'écriture :
+// on propose de mettre à jour, et on enregistre avant de recharger.
+
+if ("serviceWorker" in navigator) {
+  const reg = await navigator.serviceWorker.register("sw.js").catch(err => { console.warn(err); return null; });
+  const offer = () => { if (reg?.waiting && navigator.serviceWorker.controller) $("updateBar").hidden = false; };
+  reg?.addEventListener("updatefound", () => {
+    reg.installing?.addEventListener("statechange", offer);
+  });
+  offer();
+  $("updateBtn").onclick = async () => {
+    await save();
+    navigator.serviceWorker.addEventListener("controllerchange", () => location.reload(), { once: true });
+    reg.waiting?.postMessage("activer");
+  };
+  // Vérifie les mises à jour quand on revient dans l'app.
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) reg?.update().catch(() => {}); });
+}
+

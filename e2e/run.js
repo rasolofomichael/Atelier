@@ -8,9 +8,19 @@ const PORT = 8123;
 const URL = `http://localhost:${PORT}/`;
 let server, browser;
 
-before(async () => {
+// Chaque démarrage du serveur publie une nouvelle version du service worker.
+async function startServer() {
   server = spawn(process.execPath, ['scripts/serve.js'], { env: { ...process.env, PORT: String(PORT) }, stdio: 'pipe' });
   await new Promise(r => server.stdout.once('data', r));
+}
+async function restartServer() {
+  const old = server;
+  await new Promise(r => { old.once('exit', r); old.kill(); });
+  await startServer();
+}
+
+before(async () => {
+  await startServer();
   browser = await chromium.launch();
 });
 after(async () => { await browser?.close(); server?.kill(); });
@@ -27,6 +37,12 @@ async function open(ctx, { seed } = {}) {
   await page.goto(URL);
   await page.waitForSelector('body.ready');
   return { page, errors };
+}
+
+async function openBackups(page) {
+  await page.click('#menuBtn');
+  await page.click('#backupBtn');
+  await page.waitForSelector('#backupDlg[open]');
 }
 
 const legacy = {
@@ -58,8 +74,7 @@ test('migration depuis le prototype, saisie, rechargement, restauration', async 
   // Les données du prototype ne sont jamais effacées.
   assert.ok(await page.evaluate(() => localStorage.getItem('atelier-ecriture-v1')));
 
-  await page.click('#backupBtn');
-  await page.waitForSelector('#backupDlg[open]');
+  await openBackups(page);
   const rows = page.locator('#backupList .backup');
   assert.match(await rows.last().textContent(), /migration depuis le prototype/);
   const restore = rows.last().locator('button');
@@ -70,8 +85,7 @@ test('migration depuis le prototype, saisie, rechargement, restauration', async 
   assert.equal(await page.inputValue('#sceneText'), 'Texte écrit dans le prototype.');
 
   // La version d'avant la restauration est elle-même gardée.
-  await page.click('#backupBtn');
-  await page.waitForSelector('#backupDlg[open]');
+  await openBackups(page);
   assert.match(await rows.first().textContent(), /avant restauration/);
   assert.deepEqual(errors, []);
   await ctx.close();
@@ -118,14 +132,14 @@ test('enregistrement immédiat quand la page passe en arrière-plan', async () =
 test('export puis import JSON', async () => {
   const ctx = await browser.newContext({ acceptDownloads: true });
   const { page } = await open(ctx);
-  await page.click('#backupBtn');
+  await openBackups(page);
   const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#dlJson')]);
   assert.match(dl.suggestedFilename(), /^atelier-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}\.json$/);
   const path = await dl.path();
 
   await page.click('#closeDlg');
   await page.fill('#sceneText', 'Modifié après export.');
-  await page.click('#backupBtn');
+  await openBackups(page);
   await page.setInputFiles('#importJson', path);
   await page.waitForFunction(() => !document.getElementById('backupDlg').open);
   assert.match(await page.inputValue('#sceneText'), /^Il pleuvait sur Port-Ombre/);
@@ -140,5 +154,66 @@ test('iPhone : onglets et absence de défilement horizontal', async () => {
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await page.screenshot({ path: process.env.SHOT_DIR ? `${process.env.SHOT_DIR}/mobile.png` : undefined });
   assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+async function waitForOfflineReady(page) {
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+    if (!navigator.serviceWorker.controller) {
+      await new Promise(r => navigator.serviceWorker.addEventListener('controllerchange', r, { once: true }));
+    }
+  });
+}
+
+test('fonctionne hors ligne une fois chargée', async () => {
+  const ctx = await browser.newContext();
+  const { page, errors } = await open(ctx);
+  await waitForOfflineReady(page);
+  await page.fill('#sceneText', 'Écrit dans le train.');
+  await page.waitForFunction(() => document.getElementById('saved').textContent === 'Enregistré');
+
+  await ctx.setOffline(true);
+  await page.reload();
+  await page.waitForSelector('body.ready');
+  assert.equal(await page.inputValue('#sceneText'), 'Écrit dans le train.');
+  // Les polices viennent du cache, pas de Google.
+  assert.ok(await page.evaluate(() => document.fonts.check('16px Literata')));
+  assert.ok(await page.evaluate(async () => { await document.fonts.ready; return [...document.fonts].some(f => f.family.includes('Literata') && f.status === 'loaded'); }));
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test('nouvelle version : proposée, puis appliquée sans perdre le texte', async () => {
+  const ctx = await browser.newContext();
+  const { page } = await open(ctx);
+  await waitForOfflineReady(page);
+  assert.ok(await page.isHidden('#updateBar'));
+
+  await restartServer();   // « publication » d'une nouvelle version
+  await page.fill('#sceneText', 'Phrase en cours pendant la mise à jour.');
+  await page.evaluate(() => navigator.serviceWorker.getRegistration().then(r => r.update()));
+  await page.waitForSelector('#updateBar:not([hidden])');
+
+  await Promise.all([page.waitForEvent('load'), page.click('#updateBtn')]);
+  await page.waitForSelector('body.ready');
+  assert.equal(await page.inputValue('#sceneText'), 'Phrase en cours pendant la mise à jour.');
+  assert.ok(await page.isHidden('#updateBar'));
+  await ctx.close();
+});
+
+test('menu : ouverture, fermeture au clic extérieur et avec Échap', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const { page } = await open(ctx);
+  // L'en-tête tient sur une ligne sur iPhone.
+  assert.ok((await page.locator('header').boundingBox()).height < 70);
+  await page.click('#menuBtn');
+  assert.ok(await page.isVisible('#menuPanel'));
+  await page.screenshot({ path: process.env.SHOT_DIR ? `${process.env.SHOT_DIR}/menu.png` : undefined });
+  await page.click('#sceneText');
+  assert.ok(await page.isHidden('#menuPanel'));
+  await page.click('#menuBtn');
+  await page.keyboard.press('Escape');
+  assert.ok(await page.isHidden('#menuPanel'));
   await ctx.close();
 });

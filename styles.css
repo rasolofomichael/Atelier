@@ -102,3 +102,22 @@ dialog label.btn{display:inline-block}
 .backup{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);font-size:.85rem}
 .backup .hint{margin:0}
 .backup .btn.arm{color:#c0392b;border-color:#c0392b}
+/* V2 : menu, mise à jour, iPhone */
+header{padding-top:max(10px,env(safe-area-inset-top));padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
+.menu{position:relative}
+#menuBtn{letter-spacing:.1em}
+.menu-panel{position:absolute;right:0;top:calc(100% + 6px);z-index:10;min-width:15rem;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:4px;box-shadow:0 8px 24px rgb(0 0 0 / .12);display:flex;flex-direction:column}
+.menu-panel[hidden]{display:none}
+.menu-panel button{background:none;border:none;text-align:left;padding:10px 12px;border-radius:6px;font-size:.9rem}
+.menu-panel button:hover,.menu-panel button:focus-visible{background:var(--accent-soft);color:var(--accent)}
+.toast.update{display:flex;align-items:center;gap:12px;padding:6px 6px 6px 14px}
+.toast.update[hidden]{display:none}
+.toast.update .btn{color:var(--paper);border-color:var(--paper)}
+main{padding-bottom:max(16px,env(safe-area-inset-bottom))}
+@media (max-width:900px){
+  header{gap:8px}
+  #projectSel{flex:1;min-width:0;max-width:none}
+  .spacer{display:none}
+  /* Safari iOS zoome sur tout champ en dessous de 16px : on l'évite. */
+  input,select,textarea,.entry input,.entry textarea,.entry select,#sceneStatus,#projectSel{font-size:16px}
+}

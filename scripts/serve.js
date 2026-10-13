@@ -5,6 +5,7 @@ import { extname, join, normalize } from 'node:path';
 
 const root = normalize(join(import.meta.dirname, '..'));
 const port = Number(process.env.PORT) || 8080;
+const version = `dev-${Date.now()}`;   // une nouvelle version du service worker à chaque démarrage
 const types = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.webmanifest': 'application/manifest+json',
@@ -17,7 +18,8 @@ createServer(async (req, res) => {
   const file = normalize(join(root, path));
   if (!file.startsWith(root)) { res.writeHead(403).end(); return; }
   try {
-    const body = await readFile(file);
+    let body = await readFile(file);
+    if (path === '/sw.js') body = body.toString().replace('__VERSION__', version);
     res.writeHead(200, { 'Content-Type': types[extname(file)] ?? 'application/octet-stream', 'Cache-Control': 'no-cache' });
     res.end(body);
   } catch {
